@@ -1,130 +1,191 @@
 import React, { useState } from 'react';
-import { Sliders, Eye, ChevronDown, ChevronUp, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Wrench, ChevronDown, ChevronUp, Eye, Sparkles, X, Bell } from 'lucide-react';
 
+/**
+ * DEVELOPMENT ONLY COMPONENT
+ * This tool is strictly for Day 2 UI review & state testing.
+ * It is visually detached from the production application shell
+ * and can be completely removed/disabled via a single flag.
+ */
 export default function StateControllerToolbar({
   onSetEditorState,
   onToggleLoading,
   isLoading,
-  onToggleAudioResult,
-  hasAudioResult,
+  onSetAudioState,
+  audioState, // 'empty' | 'generated' | 'loading'
   onSetErrorType,
   errorType,
   onTriggerToast,
 }) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="mb-6 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-3.5 shadow-elevated border border-indigo-900/50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="p-1 rounded-lg bg-indigo-500/20 text-indigo-300">
-            <Eye className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-bold tracking-wide uppercase text-indigo-200">
-            Day 2 UI State Inspector
-          </span>
-          <span className="hidden sm:inline text-[11px] text-indigo-300/80 bg-indigo-900/60 px-2 py-0.5 rounded-full border border-indigo-700/40">
-            Preview all required UI states
-          </span>
-        </div>
-
+    <div className="fixed bottom-4 left-4 z-50 font-sans">
+      {/* Minimized Pill Toggle */}
+      {!isExpanded ? (
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="text-xs text-indigo-300 hover:text-white flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-white/5"
+          onClick={() => setIsExpanded(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-slate-900/90 hover:bg-slate-900 text-slate-200 hover:text-white rounded-full text-xs font-semibold shadow-lg border border-slate-700/80 backdrop-blur-md transition-all hover:scale-105"
+          title="Open UI State Inspector for Day 2 Evaluation"
         >
-          <span>{isOpen ? 'Minimize Inspector' : 'Expand Inspector'}</span>
-          {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <Wrench className="w-3.5 h-3.5 text-amber-400" />
+          <span>Dev Inspector (Day 2)</span>
         </button>
-      </div>
-
-      {isOpen && (
-        <div className="mt-3 pt-3 border-t border-indigo-900/60 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-          {/* Text Editor States */}
-          <div className="flex items-center gap-1 bg-black/30 p-1 rounded-xl border border-white/10">
-            <span className="text-[10px] uppercase font-bold text-slate-400 px-2">Editor:</span>
+      ) : (
+        /* Expanded Floating Dev Drawer */
+        <div className="w-[340px] sm:w-[460px] bg-slate-950/95 text-slate-100 rounded-2xl shadow-2xl border border-slate-800 p-4 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-3 duration-200">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
+                Dev Tool
+              </span>
+              <h3 className="text-xs font-bold text-white tracking-wide">
+                UI State Inspector (Mock Data Only)
+              </h3>
+            </div>
             <button
               type="button"
-              onClick={() => onSetEditorState('empty')}
-              className="px-2 py-1 rounded-lg hover:bg-white/10 text-slate-200 font-medium"
+              onClick={() => setIsExpanded(false)}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label="Close Inspector"
             >
-              Empty
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetEditorState('entered')}
-              className="px-2 py-1 rounded-lg hover:bg-white/10 text-slate-200 font-medium"
-            >
-              Entered
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetEditorState('near_limit')}
-              className="px-2 py-1 rounded-lg hover:bg-amber-500/20 text-amber-300 font-medium"
-            >
-              Near Limit
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetEditorState('over_limit')}
-              className="px-2 py-1 rounded-lg hover:bg-rose-500/20 text-rose-300 font-medium"
-            >
-              Over Limit
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Loading / Generating State */}
-          <button
-            type="button"
-            onClick={onToggleLoading}
-            className={`px-3 py-1.5 rounded-xl border transition-colors font-medium flex items-center gap-1.5 ${
-              isLoading 
-                ? 'bg-brand-500 border-brand-400 text-white' 
-                : 'bg-black/30 border-white/10 text-slate-200 hover:bg-white/10'
-            }`}
-          >
-            <span>{isLoading ? 'Stop Loading' : 'Toggle Loading State'}</span>
-          </button>
+          <p className="text-[11px] text-slate-400 mt-2 mb-3">
+            Use these controls to preview all required Day 2 visual states without backend APIs:
+          </p>
 
-          {/* Audio Result Toggle */}
-          <button
-            type="button"
-            onClick={onToggleAudioResult}
-            className={`px-3 py-1.5 rounded-xl border transition-colors font-medium flex items-center gap-1.5 ${
-              hasAudioResult 
-                ? 'bg-emerald-500/30 border-emerald-400/50 text-emerald-200' 
-                : 'bg-black/30 border-white/10 text-slate-200 hover:bg-white/10'
-            }`}
-          >
-            <span>{hasAudioResult ? 'Audio: Generated' : 'Audio: Empty State'}</span>
-          </button>
+          <div className="space-y-3 text-xs">
+            {/* 1. Text Editor States */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                1. Text Editor Input State:
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onSetEditorState('empty')}
+                  className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-medium text-slate-300 hover:text-white transition-colors"
+                >
+                  Empty (0)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetEditorState('entered')}
+                  className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-medium text-slate-300 hover:text-white transition-colors"
+                >
+                  Entered
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetEditorState('near_limit')}
+                  className="px-2 py-1.5 rounded-lg bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/40 text-[11px] font-medium text-amber-300 transition-colors"
+                >
+                  Near Limit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetEditorState('over_limit')}
+                  className="px-2 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/40 text-[11px] font-medium text-rose-300 transition-colors"
+                >
+                  Over Limit
+                </button>
+              </div>
+            </div>
 
-          {/* Error Selector */}
-          <div className="flex items-center gap-1.5 bg-black/30 px-2 py-1 rounded-xl border border-white/10">
-            <span className="text-[10px] uppercase font-bold text-slate-400">Error:</span>
-            <select
-              value={errorType || 'none'}
-              onChange={(e) => onSetErrorType(e.target.value === 'none' ? null : e.target.value)}
-              className="bg-transparent text-slate-200 text-xs focus:outline-none cursor-pointer"
-            >
-              <option value="none" className="bg-slate-900 text-white">None</option>
-              <option value="empty_text" className="bg-slate-900 text-white">Empty Text</option>
-              <option value="limit_exceeded" className="bg-slate-900 text-white">Limit Exceeded</option>
-              <option value="generation_failure" className="bg-slate-900 text-white">Generation Failed</option>
-              <option value="network_failure" className="bg-slate-900 text-white">Network Error</option>
-              <option value="auth_failure" className="bg-slate-900 text-white">Request Error</option>
-            </select>
+            {/* 2. Audio Result Section State */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                2. Audio Output State:
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onSetAudioState('empty')}
+                  className={`px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-colors ${
+                    audioState === 'empty'
+                      ? 'bg-brand-600 border-brand-500 text-white'
+                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
+                  }`}
+                >
+                  Empty State
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetAudioState('generated')}
+                  className={`px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-colors ${
+                    audioState === 'generated'
+                      ? 'bg-brand-600 border-brand-500 text-white'
+                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
+                  }`}
+                >
+                  Generated Card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetAudioState('loading')}
+                  className={`px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-colors ${
+                    audioState === 'loading'
+                      ? 'bg-brand-600 border-brand-500 text-white'
+                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
+                  }`}
+                >
+                  Loading Shimmer
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Generate Button Loading Toggle */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-slate-300 font-medium">
+                Button Loading State:
+              </span>
+              <button
+                type="button"
+                onClick={onToggleLoading}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                  isLoading
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                }`}
+              >
+                {isLoading ? 'Loading Active (Stop)' : 'Preview Loading State'}
+              </button>
+            </div>
+
+            {/* 4. Error Banners & Toast */}
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Error:</span>
+                <select
+                  value={errorType || 'none'}
+                  onChange={(e) => onSetErrorType(e.target.value === 'none' ? null : e.target.value)}
+                  className="bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 focus:outline-none"
+                >
+                  <option value="none">None</option>
+                  <option value="empty_text">Empty Input Error</option>
+                  <option value="limit_exceeded">Limit Exceeded Error</option>
+                  <option value="generation_failure">Generation Failed Error</option>
+                  <option value="network_failure">Network Offline Error</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={onTriggerToast}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs rounded-lg transition-colors"
+                title="Preview Success Toast"
+              >
+                <Bell className="w-3 h-3 text-emerald-400" />
+                <span>Trigger Toast</span>
+              </button>
+            </div>
           </div>
-
-          {/* Trigger Toast */}
-          <button
-            type="button"
-            onClick={onTriggerToast}
-            className="px-3 py-1.5 rounded-xl bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-indigo-200 font-medium flex items-center gap-1.5"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-300" />
-            <span>Show Toast</span>
-          </button>
         </div>
       )}
     </div>

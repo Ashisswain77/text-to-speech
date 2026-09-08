@@ -9,6 +9,9 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import Toast from '../components/common/Toast';
 import StateControllerToolbar from '../components/common/StateControllerToolbar';
 
+// Flag to easily toggle off dev inspector before production
+const ENABLE_DEV_INSPECTOR = true;
+
 const SAMPLE_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. Choose from multi-lingual neural voices with fine-tuned pitch, cadence, and expression.";
 
 const NEAR_LIMIT_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. ".repeat(53) + "Final sentence approaching five thousand characters.";
@@ -16,21 +19,21 @@ const NEAR_LIMIT_TEXT = "Vocalis converts your written ideas into natural-soundi
 const OVER_LIMIT_TEXT = "This text intentionally exceeds the maximum limit for demonstration purposes. ".repeat(66);
 
 export default function CreateSpeechPage() {
-  // State for Day 2 Presentation
-  const [text, setText] = useState(SAMPLE_TEXT);
+  // 1. Initial Default State: Strictly Clean & Empty
+  const [text, setText] = useState(''); // Empty initial state as requested
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
   const [selectedVoice, setSelectedVoice] = useState('sarah');
   const [speed, setSpeed] = useState(1.0);
   const [pitch, setPitch] = useState(0);
   const [volume, setVolume] = useState(100);
 
-  // Visual state controls
+  // 2. Output & Loading States: Starts with clean 'empty' audio state
+  const [audioState, setAudioState] = useState('empty'); // 'empty' | 'generated' | 'loading'
   const [isLoading, setIsLoading] = useState(false);
-  const [hasAudioResult, setHasAudioResult] = useState(true);
   const [errorType, setErrorType] = useState(null);
   const [showToast, setShowToast] = useState(false);
 
-  // Inspector state switcher
+  // Dev Inspector Handlers (for Day 2 UI Review only)
   const handleSetEditorState = (stateName) => {
     if (stateName === 'empty') {
       setText('');
@@ -47,9 +50,9 @@ export default function CreateSpeechPage() {
     }
   };
 
-  // Trigger simulated generate state
-  const handleGenerate = () => {
-    if (text.trim().length === 0) {
+  // Generate Button click behavior (UI-only validation for Day 2)
+  const handleGenerateClick = () => {
+    if (!text.trim()) {
       setErrorType('empty_text');
       return;
     }
@@ -57,40 +60,40 @@ export default function CreateSpeechPage() {
       setErrorType('limit_exceeded');
       return;
     }
-
     setErrorType(null);
-    setIsLoading(true);
 
-    // Simulate short presentation transition (no real API)
-    setTimeout(() => {
-      setIsLoading(false);
-      setHasAudioResult(true);
-      setShowToast(true);
-    }, 1200);
+    // Day 2 Presentation: Trigger preview state without fake backend execution
+    setAudioState('generated');
   };
 
-  // Find voice metadata
-  const currentVoiceObj = (VOICES[selectedLanguage] || VOICES['en-US']).find((v) => v.id === selectedVoice) || { name: 'Sarah' };
-  const currentLangObj = LANGUAGES.find((l) => l.id === selectedLanguage) || { name: 'English (US)' };
+  // Selected Voice & Language metadata
+  const currentVoices = VOICES[selectedLanguage] || VOICES['en-US'];
+  const currentVoiceObj = currentVoices.find((v) => v.id === selectedVoice) || currentVoices[0];
+  const currentLangObj = LANGUAGES.find((l) => l.id === selectedLanguage) || LANGUAGES[0];
+
+  // Button disabled condition: empty text or over limit
+  const isButtonDisabled = text.trim().length === 0 || text.length > 5000;
 
   return (
-    <div className="space-y-6">
-      {/* Day 2 UI State Inspector Bar */}
-      <StateControllerToolbar
-        onSetEditorState={handleSetEditorState}
-        onToggleLoading={() => setIsLoading(!isLoading)}
-        isLoading={isLoading}
-        onToggleAudioResult={() => setHasAudioResult(!hasAudioResult)}
-        hasAudioResult={hasAudioResult}
-        onSetErrorType={setErrorType}
-        errorType={errorType}
-        onTriggerToast={() => setShowToast(true)}
-      />
+    <div className="space-y-7 pb-12">
+      {/* 1. Development Only Floating State Inspector */}
+      {ENABLE_DEV_INSPECTOR && (
+        <StateControllerToolbar
+          onSetEditorState={handleSetEditorState}
+          onToggleLoading={() => setIsLoading(!isLoading)}
+          isLoading={isLoading}
+          onSetAudioState={setAudioState}
+          audioState={audioState}
+          onSetErrorType={setErrorType}
+          errorType={errorType}
+          onTriggerToast={() => setShowToast(true)}
+        />
+      )}
 
-      {/* Hero Section */}
+      {/* 2. Hero Section */}
       <Hero />
 
-      {/* Reusable Error Banner if an error state is active */}
+      {/* 3. Error Banner if active */}
       {errorType && (
         <ErrorMessage
           type={errorType}
@@ -98,16 +101,15 @@ export default function CreateSpeechPage() {
         />
       )}
 
-      {/* Main Workspace Layout */}
+      {/* 4. Main Voice Studio Workspace */}
       <div className="space-y-6">
-        {/* Step 1: Text Editor */}
-        <section aria-labelledby="editor-heading" className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 id="editor-heading" className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">1</span>
-              <span>Input Text</span>
+        {/* Step 1: Text Input Area */}
+        <section aria-labelledby="editor-title" className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <h2 id="editor-title" className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <span>1. Text Input</span>
             </h2>
-            <span className="text-xs text-slate-400">Max 5,000 characters per conversion</span>
+            <span className="text-xs text-slate-400">Max 5,000 characters</span>
           </div>
 
           <TextEditor
@@ -131,12 +133,14 @@ export default function CreateSpeechPage() {
           />
         </section>
 
-        {/* Step 2: Voice Configuration */}
-        <section aria-labelledby="voice-heading" className="space-y-2">
-          <h2 id="voice-heading" className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">2</span>
-            <span>Voice & Language Configuration</span>
-          </h2>
+        {/* Step 2: Voice & Language Configuration */}
+        <section aria-labelledby="voice-title" className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <h2 id="voice-title" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <span>2. Voice & Language</span>
+            </h2>
+            <span className="text-xs text-slate-400">Neural voice models</span>
+          </div>
 
           <VoiceSettings
             selectedLanguage={selectedLanguage}
@@ -152,54 +156,66 @@ export default function CreateSpeechPage() {
           />
         </section>
 
-        {/* Step 3: Generate CTA */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200 shadow-card">
-          <div className="space-y-1 text-center sm:text-left">
+        {/* Step 3: Generate Action Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-card">
+          <div className="space-y-0.5 text-center sm:text-left">
             <div className="text-sm font-bold text-slate-900">
-              Ready to synthesize?
+              Synthesize Audio
             </div>
             <p className="text-xs text-slate-500">
-              Estimated duration: ~{Math.max(3, Math.round(text.length / 15))} seconds · High-fidelity MP3
+              {text.trim()
+                ? `Ready to generate ~${Math.max(1, Math.round(text.length / 15))}s audio clip in studio quality.`
+                : 'Enter your text above to enable speech generation.'}
             </p>
           </div>
 
           <GenerateButton
-            onClick={handleGenerate}
+            onClick={handleGenerateClick}
             isLoading={isLoading}
-            disabled={isLoading || text.length > 5000}
-            charCount={text.length}
+            disabled={isButtonDisabled}
           />
         </div>
 
-        {/* Step 4: Audio Result or Empty State */}
-        <section aria-labelledby="result-heading" className="space-y-2 pt-2">
-          <div className="flex items-center justify-between">
-            <h2 id="result-heading" className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">3</span>
-              <span>Synthesized Speech Output</span>
+        {/* Step 4: Audio Result Section (Clean Empty State by default) */}
+        <section aria-labelledby="output-title" className="space-y-2 pt-1">
+          <div className="flex items-center justify-between px-1">
+            <h2 id="output-title" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <span>3. Generated Audio</span>
             </h2>
-            {hasAudioResult && (
-              <span className="text-xs text-brand-600 font-medium cursor-pointer hover:underline" onClick={() => setHasAudioResult(false)}>
-                Clear Output
-              </span>
+            {audioState === 'generated' && (
+              <button
+                type="button"
+                onClick={() => setAudioState('empty')}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Reset to Empty State
+              </button>
             )}
           </div>
 
-          {hasAudioResult ? (
+          {/* Conditional rendering based on visual state */}
+          {audioState === 'empty' && <EmptyAudioState />}
+
+          {audioState === 'generated' && (
             <AudioResult
               language={currentLangObj.name}
               voice={currentVoiceObj.name}
               duration="01:24"
-              textSnippet={text ? text.slice(0, 95) + (text.length > 95 ? '...' : '') : "No script provided"}
+              textSnippet={text || "Your generated voiceover sample is ready for playback and export."}
+              isLoading={false}
               onDownload={() => setShowToast(true)}
             />
-          ) : (
-            <EmptyAudioState />
+          )}
+
+          {audioState === 'loading' && (
+            <AudioResult
+              isLoading={true}
+            />
           )}
         </section>
       </div>
 
-      {/* Toast Notification */}
+      {/* Toast Notification (Manually triggerable via Dev Inspector only) */}
       {showToast && (
         <Toast
           message="Speech generated successfully."

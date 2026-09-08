@@ -4,11 +4,7 @@ import {
   Mic, 
   SlidersHorizontal, 
   ChevronDown, 
-  ChevronUp, 
-  Sparkles,
-  Volume2,
-  Gauge,
-  Activity
+  ChevronUp
 } from 'lucide-react';
 
 export const LANGUAGES = [
@@ -23,13 +19,13 @@ export const LANGUAGES = [
 
 export const VOICES = {
   'en-US': [
-    { id: 'sarah', name: 'Sarah', gender: 'Female', accent: 'American', style: 'Conversational', tag: 'Neural HD' },
+    { id: 'sarah', name: 'Sarah', gender: 'Female', accent: 'American', style: 'Conversational', tag: 'Neural' },
     { id: 'david', name: 'David', gender: 'Male', accent: 'American', style: 'Authoritative', tag: 'Studio' },
     { id: 'sonia', name: 'Sonia', gender: 'Female', accent: 'British', style: 'Expressive', tag: 'Neural' },
-    { id: 'marcus', name: 'Marcus', gender: 'Male', accent: 'Australian', style: 'Warm & Deep', tag: 'Studio HD' },
+    { id: 'marcus', name: 'Marcus', gender: 'Male', accent: 'Australian', style: 'Warm & Deep', tag: 'Studio' },
   ],
   'hi-IN': [
-    { id: 'priya', name: 'Priya', gender: 'Female', accent: 'Indian', style: 'Natural', tag: 'Neural HD' },
+    { id: 'priya', name: 'Priya', gender: 'Female', accent: 'Indian', style: 'Natural', tag: 'Neural' },
     { id: 'aarav', name: 'Aarav', gender: 'Male', accent: 'Indian', style: 'Warm', tag: 'Studio' },
   ],
   'gu-IN': [
@@ -41,7 +37,7 @@ export const VOICES = {
     { id: 'rohan', name: 'Rohan', gender: 'Male', accent: 'Marathi', style: 'Expressive', tag: 'Studio' },
   ],
   'es-ES': [
-    { id: 'elena', name: 'Elena', gender: 'Female', accent: 'Castilian', style: 'Conversational', tag: 'Neural HD' },
+    { id: 'elena', name: 'Elena', gender: 'Female', accent: 'Castilian', style: 'Conversational', tag: 'Neural' },
     { id: 'carlos', name: 'Carlos', gender: 'Male', accent: 'Castilian', style: 'Clear', tag: 'Studio' },
   ],
   'fr-FR': [
@@ -49,7 +45,7 @@ export const VOICES = {
     { id: 'lucas', name: 'Lucas', gender: 'Male', accent: 'Parisian', style: 'Narrative', tag: 'Studio' },
   ],
   'de-DE': [
-    { id: 'hannah', name: 'Hannah', gender: 'Female', accent: 'Standard', style: 'Crisp', tag: 'Neural HD' },
+    { id: 'hannah', name: 'Hannah', gender: 'Female', accent: 'Standard', style: 'Crisp', tag: 'Neural' },
     { id: 'felix', name: 'Felix', gender: 'Male', accent: 'Standard', style: 'Professional', tag: 'Studio' },
   ],
 };
@@ -68,22 +64,21 @@ export default function VoiceSettings({
 }) {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
-  // Available voices for current language
   const currentVoices = VOICES[selectedLanguage] || VOICES['en-US'];
   const activeVoiceObj = currentVoices.find((v) => v.id === selectedVoice) || currentVoices[0];
 
   return (
     <div className="space-y-4">
-      {/* Primary Configuration Grid: Two-column desktop, stacked mobile */}
+      {/* Primary 2-Column Voice & Language Configuration */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Language Selector Card */}
+        {/* Language Selector */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <label htmlFor="language-select" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide">
               <Globe2 className="w-3.5 h-3.5 text-brand-600" />
               <span>Language</span>
             </label>
-            <span className="text-[11px] text-slate-400">7 available</span>
+            <span className="text-[11px] text-slate-400">7 supported</span>
           </div>
 
           <div className="relative">
@@ -93,7 +88,6 @@ export default function VoiceSettings({
               onChange={(e) => {
                 const newLang = e.target.value;
                 onSelectLanguage && onSelectLanguage(newLang);
-                // reset voice to first of this language
                 const firstVoice = (VOICES[newLang] || [])[0];
                 if (firstVoice && onSelectVoice) {
                   onSelectVoice(firstVoice.id);
@@ -110,14 +104,12 @@ export default function VoiceSettings({
             <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Quick info tag */}
-          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-            <span>Multi-accent neural synthesis enabled</span>
-          </div>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Selected: {LANGUAGES.find((l) => l.id === selectedLanguage)?.name || 'English (US)'}
+          </p>
         </div>
 
-        {/* Voice Selector Card */}
+        {/* Voice Selector */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <label htmlFor="voice-select" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide">
@@ -125,7 +117,7 @@ export default function VoiceSettings({
               <span>Voice</span>
             </label>
             <span className="text-[11px] text-brand-600 font-medium">
-              {currentVoices.length} voices
+              {currentVoices.length} available
             </span>
           </div>
 
@@ -145,7 +137,7 @@ export default function VoiceSettings({
             <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Active Voice Metadata Pill Badges */}
+          {/* Voice Metadata Badges */}
           {activeVoiceObj && (
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
               <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">
@@ -154,117 +146,106 @@ export default function VoiceSettings({
               <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">
                 {activeVoiceObj.accent} Accent
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-brand-700 font-medium border border-indigo-100/80">
+              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-brand-700 font-medium border border-indigo-100">
                 {activeVoiceObj.style}
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-brand-600 text-white font-semibold text-[10px]">
-                {activeVoiceObj.tag}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Advanced Voice Settings (Visually Secondary Accordion) */}
+      {/* Advanced Voice Customization (Collapsible) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
         <button
           type="button"
           onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
           aria-expanded={isAdvancedOpen}
-          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50/70 transition-colors focus:outline-none focus:bg-slate-50"
+          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50/80 transition-colors focus:outline-none"
         >
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-            <SlidersHorizontal className="w-4 h-4 text-slate-500" />
+            <SlidersHorizontal className="w-4 h-4 text-slate-400" />
             <span>Advanced Voice Customization</span>
-            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-              Intermediate
+            <span className="text-[10px] text-slate-400 font-normal">
+              (Speed, Pitch, Volume)
             </span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span>{isAdvancedOpen ? 'Hide' : 'Show sliders'}</span>
-            {isAdvancedOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <div className="flex items-center gap-1 text-xs text-slate-400">
+            <span>{isAdvancedOpen ? 'Hide' : 'Expand'}</span>
+            {isAdvancedOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </div>
         </button>
 
         {isAdvancedOpen && (
-          <div className="p-5 pt-3 border-t border-slate-100 bg-slate-50/40 grid grid-cols-1 sm:grid-cols-3 gap-5 animate-in fade-in duration-150">
-            {/* Speaking Speed */}
-            <div className="space-y-1.5">
+          <div className="p-5 pt-3 border-t border-slate-100 bg-slate-50/50 grid grid-cols-1 sm:grid-cols-3 gap-6 animate-in fade-in duration-150">
+            {/* Speaking Speed: Slow ───────●────── Fast */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <label htmlFor="speed-slider" className="font-medium text-slate-600 flex items-center gap-1.5">
-                  <Gauge className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Speed</span>
-                </label>
-                <span className="font-semibold text-brand-600">{speed.toFixed(1)}x</span>
+                <span className="font-semibold text-slate-700">Speaking Speed</span>
+                <span className="text-[11px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-100">
+                  {speed.toFixed(1)}x
+                </span>
               </div>
-              <input
-                id="speed-slider"
-                type="range"
-                min="0.5"
-                max="2.0"
-                step="0.1"
-                value={speed}
-                onChange={(e) => onSpeedChange && onSpeedChange(parseFloat(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>0.5x (Slow)</span>
-                <span>1.0x (Normal)</span>
-                <span>2.0x (Fast)</span>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+                <span>Slow</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={speed}
+                  onChange={(e) => onSpeedChange && onSpeedChange(parseFloat(e.target.value))}
+                  aria-label="Speaking speed"
+                  className="flex-1"
+                />
+                <span>Fast</span>
               </div>
             </div>
 
-            {/* Pitch */}
-            <div className="space-y-1.5">
+            {/* Pitch: Low ─────●──────── High */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <label htmlFor="pitch-slider" className="font-medium text-slate-600 flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Pitch</span>
-                </label>
-                <span className="font-semibold text-brand-600">
+                <span className="font-semibold text-slate-700">Pitch</span>
+                <span className="text-[11px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-100">
                   {pitch > 0 ? `+${pitch}` : pitch} semitones
                 </span>
               </div>
-              <input
-                id="pitch-slider"
-                type="range"
-                min="-10"
-                max="10"
-                step="1"
-                value={pitch}
-                onChange={(e) => onPitchChange && onPitchChange(parseInt(e.target.value, 10))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>-10 (Deep)</span>
-                <span>0 (Default)</span>
-                <span>+10 (High)</span>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+                <span>Low</span>
+                <input
+                  type="range"
+                  min="-10"
+                  max="10"
+                  step="1"
+                  value={pitch}
+                  onChange={(e) => onPitchChange && onPitchChange(parseInt(e.target.value, 10))}
+                  aria-label="Voice pitch"
+                  className="flex-1"
+                />
+                <span>High</span>
               </div>
             </div>
 
-            {/* Volume */}
-            <div className="space-y-1.5">
+            {/* Volume: Low ─────────●──── High */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <label htmlFor="volume-slider" className="font-medium text-slate-600 flex items-center gap-1.5">
-                  <Volume2 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Volume</span>
-                </label>
-                <span className="font-semibold text-brand-600">{volume}%</span>
+                <span className="font-semibold text-slate-700">Volume</span>
+                <span className="text-[11px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-100">
+                  {volume}%
+                </span>
               </div>
-              <input
-                id="volume-slider"
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={volume}
-                onChange={(e) => onVolumeChange && onVolumeChange(parseInt(e.target.value, 10))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+                <span>Low</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={volume}
+                  onChange={(e) => onVolumeChange && onVolumeChange(parseInt(e.target.value, 10))}
+                  aria-label="Output volume"
+                  className="flex-1"
+                />
+                <span>High</span>
               </div>
             </div>
           </div>
