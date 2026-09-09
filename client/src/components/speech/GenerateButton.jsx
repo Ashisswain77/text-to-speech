@@ -16,7 +16,7 @@ export default function GenerateButton({
         flex items-center justify-center gap-2.5 transition-all duration-150
         focus:outline-none focus:ring-4 focus:ring-brand-500/25 active:scale-[0.99]
         ${disabled
-          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none'
+          ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed shadow-none'
           : isLoading
             ? 'bg-brand-600 text-white cursor-wait opacity-90'
             : 'bg-brand-600 hover:bg-brand-700 text-white shadow-sm hover:shadow shadow-brand-600/20'
@@ -30,7 +30,7 @@ export default function GenerateButton({
         </>
       ) : (
         <>
-          <Sparkles className={`w-4 h-4 ${disabled ? 'text-slate-300' : 'text-brand-200'}`} />
+          <Sparkles className={`w-4 h-4 ${disabled ? 'text-slate-300 dark:text-slate-600' : 'text-brand-200'}`} />
           <span>Generate Speech</span>
         </>
       )}

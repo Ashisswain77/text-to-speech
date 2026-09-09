@@ -3,7 +3,7 @@ import React from 'react';
 export default function Skeleton({ className = "h-4 w-full" }) {
   return (
     <div 
-      className={`animate-pulse bg-slate-200 rounded-lg ${className}`}
+      className={`animate-pulse bg-slate-200 dark:bg-slate-800 rounded-lg ${className}`}
       aria-hidden="true"
     />
   );
@@ -11,7 +11,7 @@ export default function Skeleton({ className = "h-4 w-full" }) {
 
 export function HistoryItemSkeleton() {
   return (
-    <div className="p-4 rounded-xl border border-slate-200/80 bg-white shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div className="flex-1 space-y-2">
         <Skeleton className="h-4 w-3/4" />
         <div className="flex items-center gap-3">

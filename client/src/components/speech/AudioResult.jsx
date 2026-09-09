@@ -5,8 +5,7 @@ import {
   Download, 
   Star, 
   Volume2, 
-  VolumeX, 
-  Loader2
+  VolumeX 
 } from 'lucide-react';
 import Skeleton from '../common/Skeleton';
 
@@ -14,7 +13,7 @@ export default function AudioResult({
   language = "English (US)",
   voice = "Sarah",
   duration = "01:24",
-  textSnippet = "Your generated voiceover sample is ready for playback and export.",
+  _textSnippet = "Your generated voiceover sample is ready for playback and export.",
   isLoading = false,
   onDownload,
 }) {
@@ -34,7 +33,7 @@ export default function AudioResult({
   // Loading state shimmer representation
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 sm:p-6 space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-card p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-5 w-36" />
@@ -52,24 +51,24 @@ export default function AudioResult({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 sm:p-6 transition-all duration-200">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-card p-5 sm:p-6 transition-all duration-200">
       {/* 1. Header: Title and Voice / Language / Duration */}
-      <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
+      <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-slate-900">Generated Audio</h3>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Generated Audio</h3>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
               Mock Preview
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-            {language} · <span className="text-slate-800 font-semibold">{voice}</span> · {duration}
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            {language} · <span className="text-slate-800 dark:text-slate-200 font-semibold">{voice}</span> · {duration}
           </p>
         </div>
       </div>
 
       {/* 2. Waveform Visualization Area */}
-      <div className="my-4 p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+      <div className="my-4 p-3 bg-slate-50/80 dark:bg-slate-950/60 rounded-xl border border-slate-100 dark:border-slate-800/80">
         <div className="h-12 flex items-center justify-between gap-1 px-1">
           {waveformHeights.map((h, i) => {
             const isPlayed = (i / waveformHeights.length) * 100 <= progress;
@@ -79,7 +78,7 @@ export default function AudioResult({
                 style={{ height: `${h}%` }}
                 className={`
                   flex-1 rounded-full transition-all duration-150
-                  ${isPlayed ? 'bg-brand-600' : 'bg-slate-200'}
+                  ${isPlayed ? 'bg-brand-600 dark:bg-brand-500' : 'bg-slate-200 dark:bg-slate-700/80'}
                 `}
               />
             );
@@ -95,7 +94,7 @@ export default function AudioResult({
             type="button"
             onClick={() => setIsPlaying(!isPlaying)}
             aria-label={isPlaying ? "Pause audio" : "Play audio"}
-            className="w-10 h-10 rounded-full bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shadow-sm shadow-brand-500/20 transition-all flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-brand-500/20 active:scale-95"
+            className="w-10 h-10 rounded-full bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white flex items-center justify-center shadow-sm shadow-brand-500/20 transition-all flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-brand-500/20 active:scale-95"
           >
             {isPlaying ? (
               <Pause className="w-4.5 h-4.5 fill-current" />
@@ -113,17 +112,17 @@ export default function AudioResult({
               value={progress}
               onChange={(e) => setProgress(Number(e.target.value))}
               aria-label="Seek audio timeline"
-              className="w-full cursor-pointer accent-brand-600"
+              className="w-full cursor-pointer accent-brand-600 dark:accent-brand-500"
             />
           </div>
 
           {/* Volume Control */}
-          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
             <button
               type="button"
               onClick={() => setIsMuted(!isMuted)}
               aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-              className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
+              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {isMuted || volume === 0 ? (
                 <VolumeX className="w-4 h-4 text-rose-500" />
@@ -141,20 +140,20 @@ export default function AudioResult({
                 if (isMuted) setIsMuted(false);
               }}
               aria-label="Audio player volume"
-              className="w-14 sm:w-20 cursor-pointer accent-brand-600"
+              className="w-14 sm:w-20 cursor-pointer accent-brand-600 dark:accent-brand-500"
             />
           </div>
         </div>
 
         {/* Timestamps */}
-        <div className="flex justify-between text-xs text-slate-400 font-medium px-0.5">
+        <div className="flex justify-between text-xs text-slate-400 dark:text-slate-500 font-medium px-0.5">
           <span>00:00</span>
           <span>{duration}</span>
         </div>
       </div>
 
       {/* 4. Action Footer: Favorite & Download Audio */}
-      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+      <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
         {/* Favorite Button */}
         <button
           type="button"
@@ -163,12 +162,12 @@ export default function AudioResult({
           className={`
             inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors
             ${isFavorite
-              ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
-              : 'text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200'
+              ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800/60'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700'
             }
           `}
         >
-          <Star className={`w-4 h-4 ${isFavorite ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
+          <Star className={`w-4 h-4 ${isFavorite ? 'fill-amber-400 text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
           <span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
         </button>
 
@@ -179,7 +178,7 @@ export default function AudioResult({
             if (onDownload) onDownload();
             else alert("Download UI placeholder: Real audio export will be enabled during Day 3 backend integration.");
           }}
-          className="inline-flex items-center gap-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
+          className="inline-flex items-center gap-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Download Audio</span>

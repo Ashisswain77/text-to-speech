@@ -160,12 +160,12 @@ export default function CreateSpeechPage() {
         </section>
 
         {/* Step 3: Generate Action Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-card">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-card">
           <div className="space-y-0.5 text-center sm:text-left">
-            <div className="text-sm font-bold text-slate-900">
+            <div className="text-sm font-bold text-slate-900 dark:text-white">
               Synthesize Audio
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {text.trim()
                 ? `Ready to generate ~${Math.max(1, Math.round(text.length / 15))}s audio clip in studio quality.`
                 : 'Enter your text above to enable speech generation.'}
@@ -182,14 +182,14 @@ export default function CreateSpeechPage() {
         {/* Step 4: Audio Result Section (Clean Empty State by default) */}
         <section aria-labelledby="output-title" className="space-y-2 pt-1">
           <div className="flex items-center justify-between px-1">
-            <h2 id="output-title" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h2 id="output-title" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               <span>3. Generated Audio</span>
             </h2>
             {audioState === 'generated' && (
               <button
                 type="button"
                 onClick={() => setAudioState('empty')}
-                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 Reset to Empty State
               </button>

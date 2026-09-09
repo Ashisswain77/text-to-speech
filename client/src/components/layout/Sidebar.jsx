@@ -5,9 +5,7 @@ import {
   Star, 
   Settings, 
   X, 
-  HelpCircle,
-  Headphones,
-  Sliders
+  HelpCircle
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
@@ -42,7 +40,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
       {/* Mobile Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs lg:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs lg:hidden transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -52,7 +50,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
       <aside 
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-64 bg-white border-r border-slate-200/80
+          w-64 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800
           flex flex-col justify-between
           transform transition-transform duration-200 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -61,18 +59,18 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         {/* Upper section */}
         <div>
           {/* Mobile Sidebar Header */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-slate-100 lg:hidden">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-slate-100 dark:border-slate-800 lg:hidden">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold text-xs">
-                V
+                S
               </div>
-              <span className="font-bold text-slate-900">Vocalis Studio</span>
+              <span className="font-bold text-slate-900 dark:text-white">SpeechEngine</span>
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close sidebar"
-              className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <X className="w-5 h-5" />
             </button>
@@ -80,7 +78,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
 
           {/* Navigation Links */}
           <nav className="p-4 space-y-1.5" aria-label="Main Navigation">
-            <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Workspace
             </div>
 
@@ -99,13 +97,13 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
                   className={`
                     w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all
                     ${isActive 
-                      ? 'bg-brand-50 text-brand-700 shadow-xs border border-brand-100/70 font-semibold' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 shadow-xs border border-brand-100/70 dark:border-brand-800/60 font-semibold' 
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
                     }
                   `}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-brand-600' : 'text-slate-400'}`} />
+                    <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     <span>{item.label}</span>
                   </div>
 
@@ -116,7 +114,11 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
                   )}
 
                   {item.count && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isActive ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      isActive 
+                        ? 'bg-brand-100 dark:bg-brand-900/60 text-brand-800 dark:text-brand-200' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}>
                       {item.count}
                     </span>
                   )}
@@ -127,8 +129,8 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         </div>
 
         {/* Lower section / Studio Info Card */}
-        <div className="p-4 border-t border-slate-100 space-y-3">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-sm">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-transparent dark:border-slate-800 text-white shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-300">
                 Plan Limit
@@ -146,9 +148,9 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-2 text-xs text-slate-400">
-            <span>Vocalis v1.2 (Day 2)</span>
-            <div className="flex items-center gap-1 text-slate-500 hover:text-slate-700 cursor-pointer">
+          <div className="flex items-center justify-between px-2 text-xs text-slate-400 dark:text-slate-500">
+            <span>SpeechEngine</span>
+            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer">
               <HelpCircle className="w-3.5 h-3.5" />
               <span>Docs</span>
             </div>
