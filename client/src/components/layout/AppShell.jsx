@@ -3,24 +3,24 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 
 export default function AppShell({ activeTab, onSelectTab, children }) {
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-150">
       {/* Top persistent header */}
       <Header 
-        onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
-        activeTab={activeTab}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        isSidebarOpen={isSidebarOpen}
         onSelectTab={onSelectTab}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Animated Off-Canvas Sidebar */}
         <Sidebar
           activeTab={activeTab}
           onSelectTab={onSelectTab}
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
 
         {/* Main Content Area */}

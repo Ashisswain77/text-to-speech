@@ -94,7 +94,14 @@ export default function CreateSpeechPage() {
       )}
 
       {/* 2. Hero Section */}
-      <Hero />
+      <Hero
+        onInsertSample={(sample) => {
+          setText(sample);
+          if (errorType === 'empty_text' || errorType === 'limit_exceeded') {
+            setErrorType(null);
+          }
+        }}
+      />
 
       {/* 3. Error Banner if active */}
       {errorType && (

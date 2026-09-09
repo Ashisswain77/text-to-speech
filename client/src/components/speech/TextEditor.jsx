@@ -90,21 +90,21 @@ export default function TextEditor({
         </div>
 
         {/* Right: Word and Character counts */}
-        <div className="flex items-center gap-4 text-xs">
-          <span className="text-slate-500 dark:text-slate-400 font-medium">
+        <div className="flex items-center gap-3 text-xs">
+          <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 font-medium">
             {wordCount} {wordCount === 1 ? 'word' : 'words'}
           </span>
 
           <span className={`
-            font-semibold px-2 py-0.5 rounded-md transition-colors
+            font-mono text-xs font-semibold px-2.5 py-0.5 rounded-lg transition-all duration-150
             ${isOverLimit 
-              ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 font-bold' 
+              ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 font-bold ring-1 ring-red-400' 
               : isNearLimit 
-                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' 
-                : 'text-slate-600 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/80'
+                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 ring-1 ring-amber-400' 
+                : 'text-slate-600 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-800/90'
             }
           `}>
-            {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()} chars
+            {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
           </span>
         </div>
       </div>

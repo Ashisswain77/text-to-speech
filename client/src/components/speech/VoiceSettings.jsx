@@ -181,7 +181,7 @@ export default function VoiceSettings({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-700 dark:text-slate-300">Speaking Speed</span>
-                <span className="text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-1.5 py-0.5 rounded border border-brand-100 dark:border-brand-800/60">
+                <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
                   {speed.toFixed(1)}x
                 </span>
               </div>
@@ -205,7 +205,7 @@ export default function VoiceSettings({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-700 dark:text-slate-300">Pitch</span>
-                <span className="text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-1.5 py-0.5 rounded border border-brand-100 dark:border-brand-800/60">
+                <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
                   {pitch > 0 ? `+${pitch}` : pitch} semitones
                 </span>
               </div>
@@ -229,7 +229,7 @@ export default function VoiceSettings({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-700 dark:text-slate-300">Volume</span>
-                <span className="text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-1.5 py-0.5 rounded border border-brand-100 dark:border-brand-800/60">
+                <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
                   {volume}%
                 </span>
               </div>

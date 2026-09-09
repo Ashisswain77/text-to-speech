@@ -4,11 +4,40 @@
 
 @layer base {
   html {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   html.dark {
     color-scheme: dark;
   }
+}
+
+/* Soundwave and ambient animations */
+@keyframes soundwave-bar {
+  0%, 100% {
+    height: 25%;
+  }
+  50% {
+    height: 95%;
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+}
+
+.animate-soundwave {
+  animation: soundwave-bar 1.2s ease-in-out infinite alternate;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 3s ease-in-out infinite;
 }
 
 /* Custom subtle scrollbar */

@@ -146,7 +146,7 @@ export default function AudioResult({
         </div>
 
         {/* Timestamps */}
-        <div className="flex justify-between text-xs text-slate-400 dark:text-slate-500 font-medium px-0.5">
+        <div className="flex justify-between font-mono text-xs text-slate-400 dark:text-slate-500 font-medium px-0.5">
           <span>00:00</span>
           <span>{duration}</span>
         </div>
