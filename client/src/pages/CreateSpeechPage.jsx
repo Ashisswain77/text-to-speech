@@ -87,6 +87,9 @@ export default function CreateSpeechPage() {
           onSetErrorType={setErrorType}
           errorType={errorType}
           onTriggerToast={() => setShowToast(true)}
+          currentText={text}
+          currentLanguage={selectedLanguage}
+          currentVoice={selectedVoice}
         />
       )}
 
