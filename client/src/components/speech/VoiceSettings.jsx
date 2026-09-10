@@ -191,7 +191,7 @@ export default function VoiceSettings({
                   type="range"
                   min="0.5"
                   max="2.0"
-                  step="0.1"
+                  step="0.5"
                   value={speed}
                   onChange={(e) => onSpeedChange && onSpeedChange(parseFloat(e.target.value))}
                   aria-label="Speaking speed"
@@ -213,8 +213,8 @@ export default function VoiceSettings({
                 <span>Low</span>
                 <input
                   type="range"
-                  min="-10"
-                  max="10"
+                  min="-5"
+                  max="5"
                   step="1"
                   value={pitch}
                   onChange={(e) => onPitchChange && onPitchChange(parseInt(e.target.value, 10))}

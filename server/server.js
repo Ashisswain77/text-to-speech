@@ -27,23 +27,21 @@ app.use(notFound);
 // Centralized error handling middleware
 app.use(errorHandler);
 
-// Start HTTP server
-const server = app.listen(config.port, () => {
-  console.log(
-    `[SpeechEngine Server] Listening on http://localhost:${config.port} (${config.nodeEnv})`
-  );
-});
-
-// Handle graceful termination
-const handleShutdown = (signal) => {
-  console.log(`\n[SpeechEngine Server] Received ${signal}. Shutting down gracefully...`);
-  server.close(() => {
-    console.log('[SpeechEngine Server] HTTP server closed.');
-    process.exit(0);
+// Start HTTP server when executed directly
+if (process.argv[1] && process.argv[1].endsWith('server.js')) {
+  const server = app.listen(config.port, () => {
+    console.log(`SpeechEngine API running on port ${config.port}`);
   });
-};
 
-process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-process.on('SIGINT', () => handleShutdown('SIGINT'));
+  // Handle graceful termination
+  const handleShutdown = () => {
+    server.close(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', handleShutdown);
+  process.on('SIGINT', handleShutdown);
+}
 
 export default app;

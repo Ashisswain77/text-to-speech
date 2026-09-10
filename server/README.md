@@ -1,114 +1,119 @@
 # SpeechEngine Backend API
 
-Lightweight, production-ready Node.js & Express backend for **SpeechEngine** AI Text-to-Speech Studio.
+Lightweight backend API service providing the server foundation for the **SpeechEngine** AI Text-to-Speech Studio.
 
 ---
 
-## Tech Stack
+## 1. Overview
+
+The SpeechEngine server is an Express-based Node.js backend providing foundational API routing, environment configuration, standardized JSON error and 404 responses, and health monitoring.
+
+---
+
+## 2. Backend Technology
 
 - **Runtime:** Node.js (ES Modules, `"type": "module"`)
 - **Web Framework:** Express.js 4.x
-- **Environment Management:** `dotenv`
-- **CORS:** `cors`
-- **Development Tooling:** `nodemon`
+- **CORS:** `cors` (restricted to frontend origin)
+- **Configuration:** `dotenv` with centralized parsing and validation
+- **Development Tooling:** `nodemon` for auto-reloading
 
 ---
 
-## Directory Structure
+## 3. Installation
 
-```
-server/
-├── config/
-│   └── env.js                 # Centralized configuration & environment loader
-├── controllers/
-│   └── health.controller.js   # Health check controller
-├── middleware/
-│   ├── error.middleware.js    # Centralized global error handling
-│   └── notFound.middleware.js # 404 handler for unknown routes
-├── routes/
-│   ├── health.routes.js       # Health endpoint routing
-│   └── index.js               # Central API router
-├── services/                  # Business logic services (Day 9+)
-├── utils/                     # Utility functions (Day 9+)
-├── server.js                  # Express bootstrap & HTTP server entrypoint
-├── package.json               # Backend dependencies & npm scripts
-├── .env                       # Local environment variables
-├── .env.example               # Environment variables template
-└── README.md                  # Backend documentation
-```
-
----
-
-## Getting Started
-
-### 1. Install Dependencies
+From the root repository directory, navigate to the `server` folder and install dependencies:
 
 ```bash
 cd server
 npm install
 ```
 
-### 2. Environment Variables
+---
 
-Create a `.env` file from `.env.example`:
+## 4. Environment Configuration
+
+Create a `.env` file in the `server/` directory using `.env.example` as a template:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Description | Default |
-|---|---|---|
-| `PORT` | HTTP Port for the Express server | `5000` |
-| `NODE_ENV` | Runtime environment (`development` / `production`) | `development` |
-| `CLIENT_URL` | Allowed CORS origin (SpeechEngine frontend) | `http://localhost:5173` |
+### Environment Variables
 
-### 3. Run the Server
+| Variable | Description | Required | Default |
+|---|---|---|---|
+| `PORT` | HTTP port on which the Express server listens | Yes | `5000` |
+| `NODE_ENV` | Runtime environment (`development` / `production`) | Yes | `development` |
+| `CLIENT_URL` | Frontend origin allowed by CORS | Yes | `http://localhost:5173` |
+| `TTS_API_KEY` | Reserved for future TTS provider integration | No | _(empty)_ |
+| `TTS_REGION` | Reserved for future TTS provider integration | No | _(empty)_ |
+| `TTS_ENDPOINT` | Reserved for future TTS provider integration | No | _(empty)_ |
 
-- **Development Mode (with auto-reload):**
-  ```bash
-  npm run dev
-  ```
-
-- **Production Mode:**
-  ```bash
-  npm start
-  ```
+> **Security Note:** Never commit `.env` or store real secrets in source control. TTS variables are optional and not required for Day 8.
 
 ---
 
-## Endpoints
+## 5. Development Command
 
-### 1. Health Check
-- **Route:** `GET /api/health`
-- **Description:** Verifies service uptime and health status.
-- **Sample Response:**
-  ```json
-  {
-    "status": "ok",
-    "service": "SpeechEngine Backend API",
-    "timestamp": "2026-09-09T22:50:00.000Z",
-    "uptime": 12
-  }
-  ```
+Run the server with nodemon auto-reload:
 
-### 2. Root Status Probe
-- **Route:** `GET /`
-- **Description:** Welcome probe returning basic service metadata.
-- **Sample Response:**
-  ```json
-  {
-    "service": "SpeechEngine Backend API",
-    "status": "running",
-    "version": "1.0.0",
-    "documentation": "/api/health"
-  }
-  ```
+```bash
+npm run dev
+```
 
-### 3. Error Handling
-- **404 Not Found:**
-  ```json
-  {
-    "success": false,
-    "error": "Endpoint not found: GET /api/unknown"
-  }
-  ```
+The server outputs:
+```
+SpeechEngine API running on port 5000
+```
+
+---
+
+## 6. Start Command (Production)
+
+Run the server using standard Node.js:
+
+```bash
+npm start
+```
+
+---
+
+## 7. Health Endpoint
+
+Verify server uptime and connectivity:
+
+- **Method:** `GET`
+- **Path:** `/api/health`
+- **HTTP Status:** `200 OK`
+
+### Expected Health Response
+
+```json
+{
+  "success": true,
+  "message": "SpeechEngine API is running"
+}
+```
+
+---
+
+## 8. Current Day 8 Scope & Limitations
+
+The Day 8 milestone covers **only** the backend foundation:
+- Express server initialization and modular routing (`/api`)
+- Centralized environment configuration (`config/env.js`)
+- Single active endpoint: `GET /api/health`
+- Consistent JSON 404 handler (`middleware/notFound.middleware.js`)
+- Centralized error handler (`middleware/error.middleware.js`)
+- CORS configured specifically for `http://localhost:5173`
+
+### NOT Implemented Yet (Scheduled for Future Stages)
+
+The following capabilities are deliberately **not** implemented in Day 8:
+- **TTS Generation:** `POST /api/tts` or external TTS cloud provider integration
+- **Voice Catalog:** `GET /api/voices`
+- **Authentication:** User registration, login, tokens, or sessions
+- **Database:** PostgreSQL, MongoDB, Supabase, SQLite, or any ORM/database connection
+- **Audio Storage:** File system storage, AWS S3, or audio streaming
+- **Persistence:** Speech history (`/api/history`) and favorites (`/api/favorites`)
