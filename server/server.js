@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config/env.js';
 import apiRouter from './routes/index.js';
-import { notFoundHandler } from './middleware/notFound.middleware.js';
-import { errorHandler } from './middleware/error.middleware.js';
+import notFound from './middleware/notFound.middleware.js';
+import errorHandler from './middleware/error.middleware.js';
 
 const app = express();
 
-// Enable Cross-Origin Resource Sharing for SpeechEngine Frontend
+// Configure CORS restricted to frontend client URL (no wildcard)
 app.use(
   cors({
     origin: config.clientUrl,
@@ -15,27 +15,16 @@ app.use(
   })
 );
 
-// Standard JSON and URL-encoded body parsing
+// JSON body parsing middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Root welcome probe
-app.get('/', (_req, res) => {
-  res.json({
-    service: 'SpeechEngine Backend API',
-    status: 'running',
-    version: '1.0.0',
-    documentation: '/api/health',
-  });
-});
-
-// Mount Central API Routes under /api
+// Mount modular API routes under /api
 app.use('/api', apiRouter);
 
-// 404 handler for unknown endpoints
-app.use(notFoundHandler);
+// Catch-all 404 handler for unknown routes
+app.use(notFound);
 
-// Global centralized error handler
+// Centralized error handling middleware
 app.use(errorHandler);
 
 // Start HTTP server
@@ -45,7 +34,7 @@ const server = app.listen(config.port, () => {
   );
 });
 
-// Handle graceful shutdown
+// Handle graceful termination
 const handleShutdown = (signal) => {
   console.log(`\n[SpeechEngine Server] Received ${signal}. Shutting down gracefully...`);
   server.close(() => {

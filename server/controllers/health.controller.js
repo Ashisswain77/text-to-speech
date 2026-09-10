@@ -1,11 +1,12 @@
 /**
- * Health Check Controller for SpeechEngine Backend
+ * Health Check Controller
+ * GET /api/health
  */
-export const getHealth = (req, res) => {
+export const getHealth = (_req, res) => {
   res.status(200).json({
-    status: 'ok',
-    service: 'SpeechEngine Backend API',
-    timestamp: new Date().toISOString(),
-    uptime: Math.floor(process.uptime()),
+    success: true,
+    message: 'SpeechEngine API is running',
   });
 };
+
+export default { getHealth };
