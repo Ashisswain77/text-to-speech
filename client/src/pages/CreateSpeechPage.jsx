@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Hero from '../components/speech/Hero';
 import TextEditor from '../components/speech/TextEditor';
 import VoiceSettings, { LANGUAGES, VOICES } from '../components/speech/VoiceSettings';
@@ -8,6 +8,7 @@ import EmptyAudioState from '../components/speech/EmptyAudioState';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Toast from '../components/common/Toast';
 import StateControllerToolbar from '../components/common/StateControllerToolbar';
+import { ttsService } from '../services/api';
 
 // Flag to easily toggle off dev inspector before production
 const ENABLE_DEV_INSPECTOR = true;
@@ -27,11 +28,94 @@ export default function CreateSpeechPage() {
   const [pitch, setPitch] = useState(0);
   const [volume, setVolume] = useState(100);
 
+  // Dynamic voice catalog from backend API
+  const [languages, setLanguages] = useState([]);
+  const [voices, setVoices] = useState([]);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(true);
+  const [voiceError, setVoiceError] = useState(null);
+
   // 2. Output & Loading States: Starts with clean 'empty' audio state
   const [audioState, setAudioState] = useState('empty'); // 'empty' | 'generated' | 'loading'
   const [isLoading, setIsLoading] = useState(false);
   const [errorType, setErrorType] = useState(null);
   const [showToast, setShowToast] = useState(false);
+
+  // Fetch dynamic voice catalog from backend GET /api/voices
+  const fetchVoices = useCallback(async () => {
+    setIsLoadingVoices(true);
+    setVoiceError(null);
+    try {
+      const data = await ttsService.getVoices();
+      const fetchedVoices = data?.voices || [];
+      const fetchedLanguages = data?.languages || [];
+
+      setVoices(fetchedVoices);
+      setLanguages(fetchedLanguages);
+
+      if (fetchedLanguages.length > 0) {
+        setSelectedLanguage((prevLang) => {
+          const exists = fetchedLanguages.some((l) => l.id === prevLang);
+          const newLang = exists ? prevLang : fetchedLanguages[0].id;
+
+          // Auto-select first voice for language
+          const matchingVoices = fetchedVoices.filter(
+            (v) => v.language === newLang || (Array.isArray(v.supportedLanguages) && v.supportedLanguages.includes(newLang))
+          );
+          if (matchingVoices.length > 0) {
+            setSelectedVoice((prevVoice) => {
+              const voiceExists = matchingVoices.some((v) => v.id === prevVoice);
+              return voiceExists ? prevVoice : matchingVoices[0].id;
+            });
+          }
+          return newLang;
+        });
+      }
+    } catch (err) {
+      setVoiceError(err.message || 'Failed to load voices from server');
+    } finally {
+      setIsLoadingVoices(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    ttsService.getVoices()
+      .then((data) => {
+        if (!active) return;
+        const fetchedVoices = data?.voices || [];
+        const fetchedLanguages = data?.languages || [];
+        setVoices(fetchedVoices);
+        setLanguages(fetchedLanguages);
+
+        if (fetchedLanguages.length > 0) {
+          setSelectedLanguage((prevLang) => {
+            const exists = fetchedLanguages.some((l) => l.id === prevLang);
+            const newLang = exists ? prevLang : fetchedLanguages[0].id;
+
+            const matchingVoices = fetchedVoices.filter(
+              (v) => v.language === newLang || (Array.isArray(v.supportedLanguages) && v.supportedLanguages.includes(newLang))
+            );
+            if (matchingVoices.length > 0) {
+              setSelectedVoice((prevVoice) => {
+                const voiceExists = matchingVoices.some((v) => v.id === prevVoice);
+                return voiceExists ? prevVoice : matchingVoices[0].id;
+              });
+            }
+            return newLang;
+          });
+        }
+      })
+      .catch((err) => {
+        if (active) setVoiceError(err.message || 'Failed to load voices from server');
+      })
+      .finally(() => {
+        if (active) setIsLoadingVoices(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Dev Inspector Handlers (for Day 2 UI Review only)
   const handleSetEditorState = (stateName) => {
@@ -67,9 +151,10 @@ export default function CreateSpeechPage() {
   };
 
   // Selected Voice & Language metadata
-  const currentVoices = VOICES[selectedLanguage] || VOICES['en-US'];
-  const currentVoiceObj = currentVoices.find((v) => v.id === selectedVoice) || currentVoices[0];
-  const currentLangObj = LANGUAGES.find((l) => l.id === selectedLanguage) || LANGUAGES[0];
+  const effectiveVoices = voices.length > 0 ? voices : (VOICES[selectedLanguage] || VOICES['en-US']);
+  const effectiveLanguages = languages.length > 0 ? languages : LANGUAGES;
+  const currentVoiceObj = effectiveVoices.find((v) => v.id === selectedVoice) || effectiveVoices[0] || { name: 'Sarah', gender: 'Female' };
+  const currentLangObj = effectiveLanguages.find((l) => l.id === selectedLanguage) || effectiveLanguages[0] || { name: 'English (US)' };
 
   // Button disabled condition: empty text or over limit
   const isButtonDisabled = text.trim().length === 0 || text.length > 5000;
@@ -153,6 +238,11 @@ export default function CreateSpeechPage() {
           </div>
 
           <VoiceSettings
+            languages={languages}
+            voices={voices}
+            isLoadingVoices={isLoadingVoices}
+            voiceError={voiceError}
+            onRetryVoices={fetchVoices}
             selectedLanguage={selectedLanguage}
             onSelectLanguage={setSelectedLanguage}
             selectedVoice={selectedVoice}

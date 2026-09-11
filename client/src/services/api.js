@@ -130,13 +130,13 @@ export const api = {
 export const ttsService = {
   // GET /api/voices
   getVoices: async () => {
-    throw new Error('Endpoint GET /api/voices is not implemented yet. Scheduled for Day 8 backend creation.');
+    const res = await api.get('/api/voices');
+    return res?.data || res;
   },
 
   // POST /api/tts
-  generateSpeech: async (_payload) => {
-    // Expected contract: { text, language, voice, speed, pitch, volume }
-    throw new Error('Endpoint POST /api/tts is not implemented yet. Scheduled for Day 8 backend creation.');
+  generateSpeech: async (payload) => {
+    return await api.post('/api/tts', payload);
   },
 
   // GET /api/history

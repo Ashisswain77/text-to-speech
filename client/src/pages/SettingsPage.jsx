@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { LANGUAGES, VOICES } from '../components/speech/VoiceSettings';
 import { useTheme } from '../context/ThemeContext';
+import { ttsService } from '../services/api';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -21,6 +22,15 @@ export default function SettingsPage() {
   const [audioFormat, setAudioFormat] = useState('mp3');
   const [sampleRate, setSampleRate] = useState('48000');
   const [isSaved, setIsSaved] = useState(false);
+  const [languages, setLanguages] = useState(LANGUAGES);
+  const [voices, setVoices] = useState([]);
+
+  useEffect(() => {
+    ttsService.getVoices().then((data) => {
+      if (data?.languages?.length) setLanguages(data.languages);
+      if (data?.voices?.length) setVoices(data.voices);
+    }).catch(() => {});
+  }, []);
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -169,7 +179,7 @@ export default function SettingsPage() {
                       onChange={(e) => setDefaultLang(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none"
                     >
-                      {LANGUAGES.map((l) => (
+                      {languages.map((l) => (
                         <option key={l.id} value={l.id}>{l.flag} {l.name}</option>
                       ))}
                     </select>
@@ -182,7 +192,10 @@ export default function SettingsPage() {
                       onChange={(e) => setDefaultVoice(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none"
                     >
-                      {(VOICES[defaultLang] || VOICES['en-US']).map((v) => (
+                      {(voices.length > 0
+                        ? voices.filter((v) => v.language === defaultLang || v.supportedLanguages?.includes(defaultLang))
+                        : (VOICES[defaultLang] || VOICES['en-US'])
+                      ).map((v) => (
                         <option key={v.id} value={v.id}>{v.name} ({v.gender})</option>
                       ))}
                     </select>

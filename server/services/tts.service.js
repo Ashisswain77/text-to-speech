@@ -11,7 +11,11 @@
  *         via elevenlabsProvider.synthesize(normalized).
  */
 
-import { elevenlabsProvider } from './providers/elevenlabs.provider.js';
+import {
+  elevenlabsProvider,
+  LOCALE_METADATA,
+  dynamicVoiceRegistry,
+} from './providers/elevenlabs.provider.js';
 
 // ---------------------------------------------------------------------------
 // Supported voice catalog (provider-independent SpeechEngine identifiers)
@@ -85,7 +89,8 @@ function validate(body) {
   // --- language (optional) ---
   const language = resolveOptionalString(body.language, DEFAULTS.language);
 
-  if (!SUPPORTED_LANGUAGES.has(language)) {
+  const isKnownLanguage = SUPPORTED_LANGUAGES.has(language) || Boolean(LOCALE_METADATA[language]);
+  if (!isKnownLanguage) {
     errors.push(`Unsupported language: "${language}". Supported: ${[...SUPPORTED_LANGUAGES].join(', ')}.`);
   }
 
@@ -93,8 +98,18 @@ function validate(body) {
   const voice = resolveOptionalString(body.voice, DEFAULTS.voice).toLowerCase();
 
   const languageVoices = VOICES_BY_LANGUAGE[language];
-  if (languageVoices && !languageVoices.has(voice)) {
+  const isCatalogVoice = languageVoices && languageVoices.has(voice);
+  const isDynamicVoice = dynamicVoiceRegistry.has(voice);
+
+  // Check if voice belongs to a different static language catalog
+  const isDifferentLanguageVoice = Object.entries(VOICES_BY_LANGUAGE).some(
+    ([lang, voices]) => lang !== language && voices.has(voice)
+  );
+
+  if (languageVoices && (!isCatalogVoice && (!isDynamicVoice || isDifferentLanguageVoice))) {
     errors.push(`Unsupported voice "${voice}" for language "${language}". Available: ${[...languageVoices].join(', ')}.`);
+  } else if (!languageVoices && !isDynamicVoice) {
+    errors.push(`Unsupported voice "${voice}".`);
   }
 
   // --- speed (optional, must be one of 0.5, 1, 1.5, 2) ---
@@ -208,5 +223,18 @@ export async function synthesize(payload, options = {}) {
   return await provider.synthesize(normalized);
 }
 
+/**
+ * Retrieves the available voice catalog and derived languages
+ * directly from the configured cloud provider (ElevenLabs).
+ *
+ * @param {object} [options={}] - Optional injection for testing
+ * @returns {Promise<{ success: boolean, statusCode: number, data?: { voices: Array, languages: Array }, message?: string }>}
+ */
+export async function getVoices(options = {}) {
+  const provider = options.provider || elevenlabsProvider;
+  return await provider.getVoices(options);
+}
+
 export { validate, normalize };
-export default { synthesize, validate, normalize };
+export default { synthesize, validate, normalize, getVoices };
+
