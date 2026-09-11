@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -9,26 +9,96 @@ import {
 } from 'lucide-react';
 import Skeleton from '../common/Skeleton';
 
+/**
+ * Format seconds into mm:ss display string.
+ */
+function formatTime(secs) {
+  if (!Number.isFinite(secs) || secs < 0) return '00:00';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 export default function AudioResult({
   language = "English (US)",
   voice = "Sarah",
-  duration = "01:24",
-  _textSnippet = "Your generated voiceover sample is ready for playback and export.",
+  audioUrl = null,
   isLoading = false,
   onDownload,
 }) {
+  const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [progress, setProgress] = useState(30);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(85);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Simulated waveform bar heights
+  // Decorative waveform bar heights
   const waveformHeights = [
     25, 40, 55, 75, 50, 60, 85, 70, 45, 60, 80, 95, 65, 40, 30, 55, 75, 80, 50,
     65, 90, 100, 75, 55, 40, 50, 70, 85, 90, 60, 40, 30, 55, 70, 85, 75, 55, 35,
     30, 45, 65, 80, 55, 40, 30, 45, 60, 75, 50, 30
   ];
+
+  // Sync volume/mute to audio element
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = isMuted ? 0 : volume / 100;
+  }, [volume, isMuted]);
+
+  // Reset state when audioUrl changes (new generation)
+  useEffect(() => {
+    setIsPlaying(false);
+    setProgress(0);
+    setCurrentTime(0);
+    setDuration(0);
+  }, [audioUrl]);
+
+  // Audio element event handlers
+  const handleLoadedMetadata = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && Number.isFinite(audio.duration)) {
+      setDuration(audio.duration);
+    }
+  }, []);
+
+  const handleTimeUpdate = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setCurrentTime(audio.currentTime);
+    if (audio.duration > 0) {
+      setProgress((audio.currentTime / audio.duration) * 100);
+    }
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    setIsPlaying(false);
+    setProgress(100);
+  }, []);
+
+  // Play / Pause toggle
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    }
+  }, [isPlaying, audioUrl]);
+
+  // Seek handler
+  const handleSeek = useCallback((e) => {
+    const audio = audioRef.current;
+    if (!audio || !audio.duration) return;
+    const pct = Number(e.target.value);
+    audio.currentTime = (pct / 100) * audio.duration;
+    setProgress(pct);
+  }, []);
 
   // Loading state shimmer representation
   if (isLoading) {
@@ -50,19 +120,33 @@ export default function AudioResult({
     );
   }
 
+  const displayDuration = formatTime(duration);
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-card p-5 sm:p-6 transition-all duration-200">
+      {/* Hidden HTML5 Audio Element */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="metadata"
+          onLoadedMetadata={handleLoadedMetadata}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={handleEnded}
+        />
+      )}
+
       {/* 1. Header: Title and Voice / Language / Duration */}
       <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Generated Audio</h3>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              Mock Preview
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/60">
+              Live Audio
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            {language} · <span className="text-slate-800 dark:text-slate-200 font-semibold">{voice}</span> · {duration}
+            {language} · <span className="text-slate-800 dark:text-slate-200 font-semibold">{voice}</span> · {displayDuration}
           </p>
         </div>
       </div>
@@ -92,9 +176,10 @@ export default function AudioResult({
           {/* Play/Pause Button */}
           <button
             type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={togglePlay}
+            disabled={!audioUrl}
             aria-label={isPlaying ? "Pause audio" : "Play audio"}
-            className="w-10 h-10 rounded-full bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white flex items-center justify-center shadow-sm shadow-brand-500/20 transition-all flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-brand-500/20 active:scale-95"
+            className="w-10 h-10 rounded-full bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white flex items-center justify-center shadow-sm shadow-brand-500/20 transition-all flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-brand-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPlaying ? (
               <Pause className="w-4.5 h-4.5 fill-current" />
@@ -109,8 +194,9 @@ export default function AudioResult({
               type="range"
               min="0"
               max="100"
+              step="0.1"
               value={progress}
-              onChange={(e) => setProgress(Number(e.target.value))}
+              onChange={handleSeek}
               aria-label="Seek audio timeline"
               className="w-full cursor-pointer accent-brand-600 dark:accent-brand-500"
             />
@@ -147,8 +233,8 @@ export default function AudioResult({
 
         {/* Timestamps */}
         <div className="flex justify-between font-mono text-xs text-slate-400 dark:text-slate-500 font-medium px-0.5">
-          <span>00:00</span>
-          <span>{duration}</span>
+          <span>{formatTime(currentTime)}</span>
+          <span>{displayDuration}</span>
         </div>
       </div>
 
@@ -176,9 +262,17 @@ export default function AudioResult({
           type="button"
           onClick={() => {
             if (onDownload) onDownload();
-            else alert("Download UI placeholder: Real audio export will be enabled during Day 3 backend integration.");
+            else if (audioUrl) {
+              const a = document.createElement('a');
+              a.href = audioUrl;
+              a.download = 'vocalis-speech.mp3';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }
           }}
-          className="inline-flex items-center gap-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
+          disabled={!audioUrl}
+          className="inline-flex items-center gap-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Download Audio</span>
@@ -187,3 +281,4 @@ export default function AudioResult({
     </div>
   );
 }
+

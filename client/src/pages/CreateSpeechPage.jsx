@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Hero from '../components/speech/Hero';
 import TextEditor from '../components/speech/TextEditor';
 import VoiceSettings, { LANGUAGES, VOICES } from '../components/speech/VoiceSettings';
@@ -34,11 +34,48 @@ export default function CreateSpeechPage() {
   const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const [voiceError, setVoiceError] = useState(null);
 
-  // 2. Output & Loading States: Starts with clean 'empty' audio state
+  // 2. Output & Loading States
   const [audioState, setAudioState] = useState('empty'); // 'empty' | 'generated' | 'loading'
+  const [audioUrl, setAudioUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorType, setErrorType] = useState(null);
+  const [generationError, setGenerationError] = useState(null);
   const [showToast, setShowToast] = useState(false);
+
+  // Track the current blob URL so we can revoke it on new generation or unmount
+  const audioUrlRef = useRef(null);
+
+  // Revoke old blob URL to prevent memory leaks
+  const revokeAudioUrl = useCallback(() => {
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      revokeAudioUrl();
+    };
+  }, [revokeAudioUrl]);
+
+  // Ensure selectedVoice is always valid for selectedLanguage.
+  // This is the authoritative guard — catches dropdown changes, async loads, retries, and dev inspector.
+  useEffect(() => {
+    if (voices.length === 0) return; // No catalog yet — skip until voices load
+
+    const availableForLang = voices.filter(
+      (v) => v.language === selectedLanguage || (Array.isArray(v.supportedLanguages) && v.supportedLanguages.includes(selectedLanguage))
+    );
+
+    if (availableForLang.length === 0) return; // Defensive — no voices for this language
+
+    const isCurrentVoiceValid = availableForLang.some((v) => v.id === selectedVoice);
+    if (!isCurrentVoiceValid) {
+      setSelectedVoice(availableForLang[0].id);
+    }
+  }, [selectedLanguage, voices, selectedVoice]);
 
   // Fetch dynamic voice catalog from backend GET /api/voices
   const fetchVoices = useCallback(async () => {
@@ -134,8 +171,9 @@ export default function CreateSpeechPage() {
     }
   };
 
-  // Generate Button click behavior (UI-only validation for Day 2)
-  const handleGenerateClick = () => {
+  // Generate Button — real TTS synthesis (Day 11)
+  const handleGenerateClick = async () => {
+    // Client-side validation
     if (!text.trim()) {
       setErrorType('empty_text');
       return;
@@ -145,9 +183,38 @@ export default function CreateSpeechPage() {
       return;
     }
     setErrorType(null);
+    setGenerationError(null);
 
-    // Day 2 Presentation: Trigger preview state without fake backend execution
-    setAudioState('generated');
+    // Start loading
+    setIsLoading(true);
+    setAudioState('loading');
+
+    // Revoke previous blob URL
+    revokeAudioUrl();
+    setAudioUrl(null);
+
+    try {
+      const audioBlob = await ttsService.generateSpeechAudio({
+        text: text.trim(),
+        language: selectedLanguage,
+        voice: selectedVoice,
+        speed,
+        pitch,
+        volume,
+      });
+
+      // Create object URL for the audio blob
+      const url = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = url;
+      setAudioUrl(url);
+      setAudioState('generated');
+      setShowToast(true);
+    } catch (err) {
+      setGenerationError(err.message || 'Speech generation failed. Please try again.');
+      setAudioState('empty');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Selected Voice & Language metadata
@@ -156,8 +223,8 @@ export default function CreateSpeechPage() {
   const currentVoiceObj = effectiveVoices.find((v) => v.id === selectedVoice) || effectiveVoices[0] || { name: 'Sarah', gender: 'Female' };
   const currentLangObj = effectiveLanguages.find((l) => l.id === selectedLanguage) || effectiveLanguages[0] || { name: 'English (US)' };
 
-  // Button disabled condition: empty text or over limit
-  const isButtonDisabled = text.trim().length === 0 || text.length > 5000;
+  // Button disabled condition: empty text, over limit, or currently generating
+  const isButtonDisabled = text.trim().length === 0 || text.length > 5000 || isLoading;
 
   return (
     <div className="space-y-7 pb-12">
@@ -167,7 +234,13 @@ export default function CreateSpeechPage() {
           onSetEditorState={handleSetEditorState}
           onToggleLoading={() => setIsLoading(!isLoading)}
           isLoading={isLoading}
-          onSetAudioState={setAudioState}
+          onSetAudioState={(state) => {
+            setAudioState(state);
+            if (state === 'empty') {
+              revokeAudioUrl();
+              setAudioUrl(null);
+            }
+          }}
           audioState={audioState}
           onSetErrorType={setErrorType}
           errorType={errorType}
@@ -194,6 +267,21 @@ export default function CreateSpeechPage() {
           type={errorType}
           onDismiss={() => setErrorType(null)}
         />
+      )}
+
+      {/* Generation Error Banner */}
+      {generationError && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-sm text-rose-800 dark:text-rose-300">
+          <span className="flex-shrink-0 text-base">⚠️</span>
+          <span>{generationError}</span>
+          <button
+            type="button"
+            onClick={() => setGenerationError(null)}
+            className="ml-auto text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 font-semibold text-xs"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       {/* 4. Main Voice Studio Workspace */}
@@ -276,7 +364,7 @@ export default function CreateSpeechPage() {
           />
         </div>
 
-        {/* Step 4: Audio Result Section (Clean Empty State by default) */}
+        {/* Step 4: Audio Result Section */}
         <section aria-labelledby="output-title" className="space-y-2 pt-1">
           <div className="flex items-center justify-between px-1">
             <h2 id="output-title" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -285,7 +373,11 @@ export default function CreateSpeechPage() {
             {audioState === 'generated' && (
               <button
                 type="button"
-                onClick={() => setAudioState('empty')}
+                onClick={() => {
+                  setAudioState('empty');
+                  revokeAudioUrl();
+                  setAudioUrl(null);
+                }}
                 className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 Reset to Empty State
@@ -300,10 +392,8 @@ export default function CreateSpeechPage() {
             <AudioResult
               language={currentLangObj.name}
               voice={currentVoiceObj.name}
-              duration="01:24"
-              textSnippet={text || "Your generated voiceover sample is ready for playback and export."}
+              audioUrl={audioUrl}
               isLoading={false}
-              onDownload={() => setShowToast(true)}
             />
           )}
 
@@ -315,7 +405,7 @@ export default function CreateSpeechPage() {
         </section>
       </div>
 
-      {/* Toast Notification (Manually triggerable via Dev Inspector only) */}
+      {/* Toast Notification */}
       {showToast && (
         <Toast
           message="Speech generated successfully."
@@ -325,3 +415,4 @@ export default function CreateSpeechPage() {
     </div>
   );
 }
+

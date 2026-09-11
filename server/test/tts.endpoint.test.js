@@ -67,10 +67,28 @@ describe('POST /api/tts HTTP Integration Tests', () => {
     assert.match(data.message, /Unsupported language/);
   });
 
-  it('handles valid request gracefully without leaking secrets', async () => {
+  it('returns JSON error with success:false for validation failures', async () => {
     const response = await fetch(`${baseUrl}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: '   ' }),
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    assert.ok(contentType.includes('application/json'), 'Error responses must be application/json');
+    const data = await response.json();
+    assert.strictEqual(response.status, 400);
+    assert.strictEqual(data.success, false);
+    assert.ok(data.message, 'Error response must contain message');
+  });
+
+  it('handles valid request gracefully — returns audio/mpeg on success or JSON on provider error', async () => {
+    const response = await fetch(`${baseUrl}/api/tts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
+      },
       body: JSON.stringify({
         text: 'Testing SpeechEngine integration with ElevenLabs',
         language: 'en-US',
@@ -79,13 +97,25 @@ describe('POST /api/tts HTTP Integration Tests', () => {
       }),
     });
 
-    const data = await response.json();
-    // In test environment, if no key or dummy key is set, returns either 500 (no key), 502 (invalid key/auth failed), or 200 (live success)
-    assert.ok([200, 500, 502].includes(response.status));
-    assert.strictEqual(typeof data.message, 'string');
-    // Ensure API key is NEVER exposed in the JSON response
-    const jsonString = JSON.stringify(data);
-    assert.strictEqual(jsonString.includes('xi-api-key'), false);
-    assert.strictEqual(jsonString.includes('sk_'), false);
+    const contentType = response.headers.get('content-type') || '';
+
+    if (response.status === 200) {
+      // Day 11: Successful synthesis returns raw audio/mpeg binary
+      assert.ok(contentType.includes('audio/mpeg'), `Expected audio/mpeg but got ${contentType}`);
+      const buffer = await response.arrayBuffer();
+      assert.ok(buffer.byteLength > 0, 'Audio buffer must not be empty');
+    } else {
+      // Provider errors (500 no key, 502 invalid key) return JSON
+      assert.ok(contentType.includes('application/json'), `Expected application/json error but got ${contentType}`);
+      const data = await response.json();
+      assert.ok([400, 402, 429, 500, 502, 503].includes(response.status));
+      assert.strictEqual(data.success, false);
+      assert.strictEqual(typeof data.message, 'string');
+      // Ensure API key is NEVER exposed in the JSON response
+      const jsonString = JSON.stringify(data);
+      assert.strictEqual(jsonString.includes('xi-api-key'), false);
+      assert.strictEqual(jsonString.includes('sk_'), false);
+    }
   });
 });
+

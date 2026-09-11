@@ -149,7 +149,6 @@ export const ttsService = {
    * @returns {Promise<Blob>} MP3 audio blob
    */
   generateSpeechAudio: async (payload) => {
-    const isAbsolute = false;
     const url = `${API_BASE_URL.replace(/\/$/, '')}/api/tts`;
 
     let response;

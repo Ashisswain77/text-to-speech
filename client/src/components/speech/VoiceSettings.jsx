@@ -149,9 +149,10 @@ export default function VoiceSettings({
                   availableVoices = VOICES[newLang] || [];
                 }
 
-                const firstVoice = availableVoices[0];
-                if (firstVoice && onSelectVoice) {
-                  onSelectVoice(firstVoice.id);
+                // Only reset voice if the current selection is not available for the new language
+                const currentVoiceValid = availableVoices.some((v) => v.id === selectedVoice);
+                if (!currentVoiceValid && availableVoices.length > 0 && onSelectVoice) {
+                  onSelectVoice(availableVoices[0].id);
                 }
               }}
               className="w-full appearance-none bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-medium rounded-xl py-2.5 pl-3.5 pr-10 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 cursor-pointer"
