@@ -3,9 +3,6 @@ import assert from 'node:assert/strict';
 import {
   ElevenLabsProvider,
   resolveProviderVoiceId,
-  mapProviderSpeed,
-  mapProviderPitch,
-  applyAudioPitch,
   ELEVENLABS_VOICE_MAP,
   DEFAULT_ELEVENLABS_VOICE_ID,
 } from '../services/providers/elevenlabs.provider.js';
@@ -42,65 +39,11 @@ describe('ElevenLabs Provider Unit Tests', () => {
     });
   });
 
-  describe('Speed Parameter Mapping', () => {
-    it('preserves valid speed factors within bounds [0.7, 1.2]', () => {
-      assert.strictEqual(mapProviderSpeed(0.7), 0.7);
-      assert.strictEqual(mapProviderSpeed(0.8), 0.8);
-      assert.strictEqual(mapProviderSpeed(0.9), 0.9);
-      assert.strictEqual(mapProviderSpeed(1.0), 1.0);
-      assert.strictEqual(mapProviderSpeed(1.1), 1.1);
-      assert.strictEqual(mapProviderSpeed(1.2), 1.2);
-    });
-
-    it('clamps extreme speed values within [0.7, 1.2]', () => {
-      assert.strictEqual(mapProviderSpeed(0.5), 0.7);
-      assert.strictEqual(mapProviderSpeed(0.1), 0.7);
-      assert.strictEqual(mapProviderSpeed(1.5), 1.2);
-      assert.strictEqual(mapProviderSpeed(2.0), 1.2);
-      assert.strictEqual(mapProviderSpeed(5.0), 1.2);
-    });
-
-    it('falls back to 1.0 for non-numeric speeds', () => {
-      assert.strictEqual(mapProviderSpeed(null), 1.0);
-      assert.strictEqual(mapProviderSpeed(undefined), 1.0);
-      assert.strictEqual(mapProviderSpeed(NaN), 1.0);
-      assert.strictEqual(mapProviderSpeed('fast'), 1.0);
-    });
-  });
-
-  describe('Pitch Parameter Mapping', () => {
-    it('preserves valid pitch values within [-10, 10]', () => {
-      assert.strictEqual(mapProviderPitch(-10), -10);
-      assert.strictEqual(mapProviderPitch(-5), -5);
-      assert.strictEqual(mapProviderPitch(0), 0);
-      assert.strictEqual(mapProviderPitch(5), 5);
-      assert.strictEqual(mapProviderPitch(10), 10);
-    });
-
-    it('clamps extreme pitch values within [-10, 10]', () => {
-      assert.strictEqual(mapProviderPitch(-15), -10);
-      assert.strictEqual(mapProviderPitch(25), 10);
-    });
-
-    it('falls back to 0 for non-numeric or missing pitch', () => {
-      assert.strictEqual(mapProviderPitch(null), 0);
-      assert.strictEqual(mapProviderPitch(undefined), 0);
-      assert.strictEqual(mapProviderPitch(NaN), 0);
-      assert.strictEqual(mapProviderPitch('high'), 0);
-    });
-
-    it('applies audio pitch processing without mutating audio integrity on empty/zero', () => {
-      const buffer = Buffer.from([0x01, 0x02]);
-      assert.strictEqual(applyAudioPitch(buffer, 0), buffer);
-      assert.strictEqual(applyAudioPitch(null, 5), null);
-    });
-  });
-
   describe('Missing API Key Handling', () => {
     it('returns statusCode 500 when API key is missing or empty', async () => {
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Test phrase', voice: 'sarah', speed: 1.0, pitch: 0 },
+        { text: 'Test phrase', voice: 'sarah' },
         { apiKey: '' }
       );
 
@@ -134,7 +77,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Hello, this is a test speech.', voice: 'david', speed: 1.1, pitch: 3 },
+        { text: 'Hello, this is a test speech.', voice: 'david' },
         {
           apiKey: 'test_elevenlabs_key_123',
           modelId: 'eleven_multilingual_v2',
@@ -151,9 +94,11 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       assert.strictEqual(capturedBody.text, 'Hello, this is a test speech.');
       assert.strictEqual(capturedBody.model_id, 'eleven_multilingual_v2');
-      assert.strictEqual(capturedBody.voice_settings.speed, 1.1);
-      assert.strictEqual(capturedBody.voice_settings.stability, 0.5);
-      // Verify pitch and volume are NOT sent in ElevenLabs voice_settings
+      assert.deepStrictEqual(capturedBody.voice_settings, {
+        stability: 0.5,
+        similarity_boost: 0.75,
+      });
+      assert.strictEqual(capturedBody.voice_settings.speed, undefined);
       assert.strictEqual(capturedBody.voice_settings.pitch, undefined);
       assert.strictEqual(capturedBody.voice_settings.volume, undefined);
 
@@ -164,8 +109,8 @@ describe('ElevenLabs Provider Unit Tests', () => {
       assert.strictEqual(result.data.format, 'mp3');
       assert.strictEqual(result.data.characterCount, 29);
       assert.strictEqual(result.data.audioSizeBytes, 4);
-      assert.strictEqual(result.data.pitch, 3);
-      assert.strictEqual(result.data.speed, 1.1);
+      assert.strictEqual(result.data.pitch, undefined);
+      assert.strictEqual(result.data.speed, undefined);
       assert.ok(Buffer.isBuffer(result.audioBuffer));
       assert.strictEqual(result.audioBuffer.length, 4);
     });
@@ -180,7 +125,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Valid test text', voice: 'sarah', speed: 1.0 },
+        { text: 'Valid test text', voice: 'sarah' },
         { apiKey: 'secret_invalid_key', fetchFn: mockFetch }
       );
 
@@ -200,7 +145,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Valid test text', voice: 'priya', speed: 1.0 },
+        { text: 'Valid test text', voice: 'priya' },
         { apiKey: 'valid_key', fetchFn: mockFetch }
       );
 
@@ -219,7 +164,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Valid test text', voice: 'sarah', speed: 1.0 },
+        { text: 'Valid test text', voice: 'sarah' },
         { apiKey: 'valid_key', fetchFn: mockFetch }
       );
 
@@ -235,7 +180,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Valid test text', voice: 'sarah', speed: 1.0 },
+        { text: 'Valid test text', voice: 'sarah' },
         { apiKey: 'valid_key', fetchFn: mockFetch }
       );
 
