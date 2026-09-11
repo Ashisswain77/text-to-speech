@@ -204,4 +204,102 @@ describe('ElevenLabs Provider Unit Tests', () => {
       assert.match(result.message, /Failed to reach ElevenLabs API/);
     });
   });
+
+  describe('Voice Discovery Flow (getVoices)', () => {
+    it('queries official ElevenLabs v2/voices endpoint with xi-api-key', async () => {
+      let capturedUrl = '';
+      let capturedHeaders = {};
+
+      const mockFetch = async (url, init = {}) => {
+        capturedUrl = url;
+        capturedHeaders = init.headers || {};
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: async () => ({
+            voices: [
+              {
+                voice_id: 'v2_voice_abc',
+                name: 'Sarah - Mature, Reassuring',
+                category: 'premade',
+                labels: { language: 'en', gender: 'female', accent: 'american', use_case: 'conversational' },
+                verified_languages: [{ locale: 'en-US' }, { locale: 'hi-IN' }],
+              },
+            ],
+          }),
+        };
+      };
+
+      const provider = new ElevenLabsProvider();
+      const result = await provider.getVoices({
+        apiKey: 'secret_key_v2_test',
+        fetchFn: mockFetch,
+      });
+
+      assert.strictEqual(capturedUrl, 'https://api.elevenlabs.io/v2/voices');
+      assert.strictEqual(capturedHeaders['xi-api-key'], 'secret_key_v2_test');
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.statusCode, 200);
+      assert.strictEqual(result.data.voices.length, 1);
+
+      const voice = result.data.voices[0];
+      assert.strictEqual(voice.id, 'sarah');
+      assert.strictEqual(voice.name, 'Sarah');
+      assert.strictEqual(voice.language, 'en-US');
+      assert.strictEqual(voice.gender, 'Female');
+      assert.strictEqual(voice.accent, 'American');
+      assert.strictEqual(voice.style, 'Conversational');
+      assert.ok(!('voice_id' in voice), 'Must not expose provider internal voice_id');
+      assert.ok(result.data.languages.length > 0);
+    });
+
+    it('falls back to v1/voices when v2 endpoint returns 401 or 404', async () => {
+      const urlsCalled = [];
+
+      const mockFetch = async (url) => {
+        urlsCalled.push(url);
+        if (url === 'https://api.elevenlabs.io/v2/voices') {
+          return {
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+          };
+        }
+        if (url === 'https://api.elevenlabs.io/v1/voices') {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              voices: [
+                {
+                  voice_id: 'v1_voice_xyz',
+                  name: 'Roger - Laid-Back, Casual',
+                  category: 'premade',
+                  labels: { language: 'en', gender: 'male', accent: 'american' },
+                },
+              ],
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const provider = new ElevenLabsProvider();
+      const result = await provider.getVoices({
+        apiKey: 'key_without_voices_read',
+        fetchFn: mockFetch,
+      });
+
+      assert.deepStrictEqual(urlsCalled, [
+        'https://api.elevenlabs.io/v2/voices',
+        'https://api.elevenlabs.io/v1/voices',
+      ]);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.statusCode, 200);
+      assert.strictEqual(result.data.voices[0].id, 'roger');
+    });
+  });
 });
+

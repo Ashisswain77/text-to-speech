@@ -134,9 +134,60 @@ export const ttsService = {
     return res?.data || res;
   },
 
-  // POST /api/tts
+  // POST /api/tts (legacy JSON response)
   generateSpeech: async (payload) => {
     return await api.post('/api/tts', payload);
+  },
+
+  /**
+   * POST /api/tts — Day 11 audio binary variant.
+   *
+   * Returns: Blob (audio/mpeg) on success.
+   * Throws:  ApiError with parsed JSON message on failure.
+   *
+   * @param {object} payload - { text, language, voice, speed, pitch, volume }
+   * @returns {Promise<Blob>} MP3 audio blob
+   */
+  generateSpeechAudio: async (payload) => {
+    const isAbsolute = false;
+    const url = `${API_BASE_URL.replace(/\/$/, '')}/api/tts`;
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      throw new ApiError(
+        `Network error: Unable to reach the server. (${err.message})`,
+        { isNetworkError: true }
+      );
+    }
+
+    // Error responses come back as JSON
+    if (!response.ok) {
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+      const errorMsg = data?.message || `HTTP Error ${response.status}: ${response.statusText || 'Request failed'}`;
+      throw new ApiError(errorMsg, {
+        status: response.status,
+        statusText: response.statusText,
+        data,
+        isNetworkError: false,
+      });
+    }
+
+    // Success: return the audio as a Blob
+    return await response.blob();
   },
 
   // GET /api/history
