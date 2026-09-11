@@ -52,7 +52,7 @@ const DEFAULTS = {
 
 const CONSTRAINTS = {
   text: { minLength: 1, maxLength: 5000 },
-  speed: { allowed: new Set([0.5, 1, 1.5, 2]) },
+  speed: { min: 0.7, max: 1.2 },
   pitch: { min: -5, max: 5 },
   volume: { min: 0, max: 100 },
 };
@@ -112,10 +112,11 @@ function validate(body) {
     errors.push(`Unsupported voice "${voice}".`);
   }
 
-  // --- speed (optional, must be one of 0.5, 1, 1.5, 2) ---
+  // --- speed (optional, must be between 0.7 and 1.2) ---
   if (body.speed !== undefined && body.speed !== null) {
-    if (typeof body.speed !== 'number' || !CONSTRAINTS.speed.allowed.has(body.speed)) {
-      errors.push('Speed must be one of: 0.5, 1, 1.5, 2.');
+    const speed = Number(body.speed);
+    if (typeof body.speed !== 'number' || Number.isNaN(speed) || speed < CONSTRAINTS.speed.min || speed > CONSTRAINTS.speed.max) {
+      errors.push(`Speed must be between ${CONSTRAINTS.speed.min} and ${CONSTRAINTS.speed.max}.`);
     }
   }
 

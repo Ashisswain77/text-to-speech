@@ -48,7 +48,24 @@ describe('POST /api/tts HTTP Integration Tests', () => {
     const data = await response.json();
     assert.strictEqual(response.status, 400);
     assert.strictEqual(data.success, false);
-    assert.match(data.message, /Speed must be one of/);
+    assert.match(data.message, /Speed must be between 0.7 and 1.2/);
+  });
+
+  it('rejects old speed contract values (0.5, 1.5, 2.0) with 400', async () => {
+    for (const oldSpeed of [0.5, 1.5, 2.0]) {
+      const res = await fetch(`${baseUrl}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: 'Hello world',
+          speed: oldSpeed,
+        }),
+      });
+      const data = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(data.success, false);
+      assert.match(data.message, /Speed must be between 0.7 and 1.2/);
+    }
   });
 
   it('rejects unsupported language with 400', async () => {

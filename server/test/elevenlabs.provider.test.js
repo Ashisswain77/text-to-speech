@@ -41,16 +41,21 @@ describe('ElevenLabs Provider Unit Tests', () => {
   });
 
   describe('Speed Parameter Mapping', () => {
-    it('preserves valid speed factors within bounds', () => {
-      assert.strictEqual(mapProviderSpeed(0.5), 0.5);
+    it('preserves valid speed factors within bounds [0.7, 1.2]', () => {
+      assert.strictEqual(mapProviderSpeed(0.7), 0.7);
+      assert.strictEqual(mapProviderSpeed(0.8), 0.8);
+      assert.strictEqual(mapProviderSpeed(0.9), 0.9);
       assert.strictEqual(mapProviderSpeed(1.0), 1.0);
-      assert.strictEqual(mapProviderSpeed(1.5), 1.5);
-      assert.strictEqual(mapProviderSpeed(2.0), 2.0);
+      assert.strictEqual(mapProviderSpeed(1.1), 1.1);
+      assert.strictEqual(mapProviderSpeed(1.2), 1.2);
     });
 
-    it('clamps extreme speed values within [0.5, 2.0]', () => {
-      assert.strictEqual(mapProviderSpeed(0.1), 0.5);
-      assert.strictEqual(mapProviderSpeed(5.0), 2.0);
+    it('clamps extreme speed values within [0.7, 1.2]', () => {
+      assert.strictEqual(mapProviderSpeed(0.5), 0.7);
+      assert.strictEqual(mapProviderSpeed(0.1), 0.7);
+      assert.strictEqual(mapProviderSpeed(1.5), 1.2);
+      assert.strictEqual(mapProviderSpeed(2.0), 1.2);
+      assert.strictEqual(mapProviderSpeed(5.0), 1.2);
     });
 
     it('falls back to 1.0 for non-numeric speeds', () => {
@@ -99,7 +104,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Hello, this is a test speech.', voice: 'david', speed: 1.5 },
+        { text: 'Hello, this is a test speech.', voice: 'david', speed: 1.1 },
         {
           apiKey: 'test_elevenlabs_key_123',
           modelId: 'eleven_multilingual_v2',
@@ -116,7 +121,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       assert.strictEqual(capturedBody.text, 'Hello, this is a test speech.');
       assert.strictEqual(capturedBody.model_id, 'eleven_multilingual_v2');
-      assert.strictEqual(capturedBody.voice_settings.speed, 1.5);
+      assert.strictEqual(capturedBody.voice_settings.speed, 1.1);
       assert.strictEqual(capturedBody.voice_settings.stability, 0.5);
 
       // Verify returned result

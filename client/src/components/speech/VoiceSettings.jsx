@@ -246,24 +246,42 @@ export default function VoiceSettings({
             {/* Speaking Speed */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Speaking Speed</span>
+                <label htmlFor="speed-select" className="font-semibold text-slate-700 dark:text-slate-300">
+                  Speaking Speed
+                </label>
                 <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
                   {speed.toFixed(1)}x
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                <span>Slow</span>
+                <span>0.7x</span>
                 <input
                   type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.5"
+                  min="0.7"
+                  max="1.2"
+                  step="0.1"
                   value={speed}
-                  onChange={(e) => onSpeedChange && onSpeedChange(parseFloat(e.target.value))}
+                  onChange={(e) => onSpeedChange && onSpeedChange(Math.round(parseFloat(e.target.value) * 10) / 10)}
                   aria-label="Speaking speed"
                   className="flex-1"
                 />
-                <span>Fast</span>
+                <span>1.2x</span>
+              </div>
+              <div>
+                <select
+                  id="speed-select"
+                  aria-label="Speaking speed select"
+                  value={speed.toFixed(1)}
+                  onChange={(e) => onSpeedChange && onSpeedChange(parseFloat(e.target.value))}
+                  className="w-full text-xs font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-1 px-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer"
+                >
+                  <option value="0.7">0.7x</option>
+                  <option value="0.8">0.8x</option>
+                  <option value="0.9">0.9x</option>
+                  <option value="1.0">1.0x</option>
+                  <option value="1.1">1.1x</option>
+                  <option value="1.2">1.2x</option>
+                </select>
               </div>
             </div>
 

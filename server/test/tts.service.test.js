@@ -32,7 +32,20 @@ describe('SpeechEngine TTS Service Tests', () => {
       const invalidSpeed = await synthesize({ text: 'Hello', speed: 3.5 });
       assert.strictEqual(invalidSpeed.success, false);
       assert.strictEqual(invalidSpeed.statusCode, 400);
-      assert.match(invalidSpeed.message, /Speed must be one of/);
+      assert.match(invalidSpeed.message, /Speed must be between 0.7 and 1.2/);
+
+      // Verify old speed contract values (0.5, 1.5, 2.0) are rejected
+      const oldSpeedLow = await synthesize({ text: 'Hello', speed: 0.5 });
+      assert.strictEqual(oldSpeedLow.success, false);
+      assert.strictEqual(oldSpeedLow.statusCode, 400);
+
+      const oldSpeedHigh = await synthesize({ text: 'Hello', speed: 1.5 });
+      assert.strictEqual(oldSpeedHigh.success, false);
+      assert.strictEqual(oldSpeedHigh.statusCode, 400);
+
+      const oldSpeedMax = await synthesize({ text: 'Hello', speed: 2.0 });
+      assert.strictEqual(oldSpeedMax.success, false);
+      assert.strictEqual(oldSpeedMax.statusCode, 400);
     });
 
     it('correctly applies defaults during normalization', () => {
@@ -63,7 +76,7 @@ describe('SpeechEngine TTS Service Tests', () => {
       };
 
       const result = await synthesize(
-        { text: 'Sample text to synthesize', voice: 'david', speed: 1.5 },
+        { text: 'Sample text to synthesize', voice: 'david', speed: 1.1 },
         { provider: mockProvider }
       );
 
@@ -71,7 +84,7 @@ describe('SpeechEngine TTS Service Tests', () => {
       assert.strictEqual(result.statusCode, 200);
       assert.strictEqual(passedPayload.text, 'Sample text to synthesize');
       assert.strictEqual(passedPayload.voice, 'david');
-      assert.strictEqual(passedPayload.speed, 1.5);
+      assert.strictEqual(passedPayload.speed, 1.1);
     });
   });
 });

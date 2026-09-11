@@ -277,7 +277,7 @@ export function resolveProviderVoiceId(voiceKey) {
 
 /**
  * Maps SpeechEngine speed into ElevenLabs voice_settings speed.
- * Normalizes and clamps speed between 0.5 and 2.0.
+ * Normalizes and clamps speed between 0.7 and 1.2.
  * @param {number|undefined} speed - SpeechEngine speed setting
  * @returns {number} ElevenLabs speed value
  */
@@ -285,7 +285,7 @@ export function mapProviderSpeed(speed) {
   if (typeof speed !== 'number' || Number.isNaN(speed)) {
     return 1.0;
   }
-  return Math.max(0.5, Math.min(2.0, speed));
+  return Math.max(0.7, Math.min(1.2, speed));
 }
 
 /**
