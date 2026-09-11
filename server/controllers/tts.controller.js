@@ -11,10 +11,16 @@ export const generateSpeech = async (req, res, next) => {
   try {
     const result = await synthesize(req.body);
 
-    return res.status(result.statusCode).json({
+    const responsePayload = {
       success: result.success,
       message: result.message,
-    });
+    };
+
+    if (result.data) {
+      responsePayload.data = result.data;
+    }
+
+    return res.status(result.statusCode).json(responsePayload);
   } catch (err) {
     next(err);
   }

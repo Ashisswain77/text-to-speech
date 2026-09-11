@@ -1,7 +1,16 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-// Load environment variables from .env file
+// Resolve explicit path to server/.env relative to this configuration module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const serverEnvPath = path.resolve(__dirname, '../.env');
+
+// Load environment variables: check process.cwd() .env first, then explicitly load server/.env
 dotenv.config();
+dotenv.config({ path: serverEnvPath, override: true });
+
 
 /**
  * Validates and normalizes the server port
@@ -48,8 +57,13 @@ export const config = Object.freeze({
   isDevelopment: nodeEnv === 'development',
   isTest: nodeEnv === 'test',
   
-  // Reserved for future TTS integration (Day 9+)
-  // NOTE: TTS variables are intentionally optional and NOT required for Day 8
+  // ElevenLabs TTS Provider Configuration (Day 10)
+  elevenlabs: Object.freeze({
+    apiKey: (process.env.ELEVENLABS_API_KEY || process.env.TTS_API_KEY || '').trim(),
+    modelId: (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim(),
+  }),
+
+  // Reserved for future TTS integration
   tts: Object.freeze({
     apiKey: process.env.TTS_API_KEY || '',
     region: process.env.TTS_REGION || '',

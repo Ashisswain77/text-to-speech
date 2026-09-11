@@ -7,11 +7,11 @@
  *   2. SpeechEngine normalization
  *   3. Provider interaction (Day 10)
  *
- * Day 9: No provider is configured — valid requests
- *         return an honest 501 (Not Implemented).
- * Day 10: A real provider adapter will be plugged in
- *         via the synthesizeWithProvider() path below.
+ * Day 10: ElevenLabs provider adapter is plugged in
+ *         via elevenlabsProvider.synthesize(normalized).
  */
+
+import { elevenlabsProvider } from './providers/elevenlabs.provider.js';
 
 // ---------------------------------------------------------------------------
 // Supported voice catalog (provider-independent SpeechEngine identifiers)
@@ -181,13 +181,14 @@ function resolveOptionalString(value, fallback) {
 /**
  * Process a TTS synthesis request.
  *
- * Day 9: Validates and normalizes the request, then returns 501
- *         because no TTS provider is configured yet.
+ * Validates and normalizes the request, then delegates synthesis
+ * to the configured cloud provider adapter (ElevenLabs).
  *
  * @param {object} payload - Raw request body
- * @returns {{ success: boolean, statusCode: number, message: string }}
+ * @param {object} [options={}] - Optional overrides (e.g. mock provider for testing)
+ * @returns {Promise<{ success: boolean, statusCode: number, message: string, data?: object, audioBuffer?: Buffer }>}
  */
-export async function synthesize(payload) {
+export async function synthesize(payload, options = {}) {
   // 1. Validate
   const errors = validate(payload);
 
@@ -200,16 +201,12 @@ export async function synthesize(payload) {
   }
 
   // 2. Normalize (defaults applied, text trimmed)
-  // const normalized = normalize(payload);
-  // normalized is ready for provider dispatch on Day 10
-  normalize(payload); // validate normalization works; result used by provider on Day 10
+  const normalized = normalize(payload);
 
-  // 3. Provider interaction — not implemented yet
-  return {
-    success: false,
-    statusCode: 501,
-    message: 'TTS provider integration is not configured yet.',
-  };
+  // 3. Provider interaction (ElevenLabs adapter)
+  const provider = options.provider || elevenlabsProvider;
+  return await provider.synthesize(normalized);
 }
 
-export default { synthesize };
+export { validate, normalize };
+export default { synthesize, validate, normalize };
