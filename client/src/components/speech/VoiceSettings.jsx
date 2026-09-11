@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Globe2, 
   Mic, 
-  SlidersHorizontal, 
   ChevronDown, 
-  ChevronUp,
   Loader2,
   AlertCircle,
   RefreshCw
@@ -63,14 +61,7 @@ export default function VoiceSettings({
   onSelectLanguage,
   selectedVoice = 'sarah',
   onSelectVoice,
-  speed = 1.0,
-  onSpeedChange,
-  pitch = 0,
-  onPitchChange,
-  volume = 100,
-  onVolumeChange,
 }) {
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Use dynamic languages if available, else static fallback
   const effectiveLanguages = (dynamicLanguages && dynamicLanguages.length > 0)
@@ -218,122 +209,6 @@ export default function VoiceSettings({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Advanced Voice Customization (Collapsible) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-card overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-          aria-expanded={isAdvancedOpen}
-          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-colors focus:outline-none"
-        >
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-            <SlidersHorizontal className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-            <span>Advanced Voice Customization</span>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
-              (Speed, Pitch, Volume)
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
-            <span>{isAdvancedOpen ? 'Hide' : 'Expand'}</span>
-            {isAdvancedOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </div>
-        </button>
-
-        {isAdvancedOpen && (
-          <div className="p-5 pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 grid grid-cols-1 sm:grid-cols-3 gap-6 animate-in fade-in duration-150">
-            {/* Speaking Speed */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <label htmlFor="speed-select" className="font-semibold text-slate-700 dark:text-slate-300">
-                  Speaking Speed
-                </label>
-                <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
-                  {speed.toFixed(1)}x
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                <span>0.7x</span>
-                <input
-                  type="range"
-                  min="0.7"
-                  max="1.2"
-                  step="0.1"
-                  value={speed}
-                  onChange={(e) => onSpeedChange && onSpeedChange(Math.round(parseFloat(e.target.value) * 10) / 10)}
-                  aria-label="Speaking speed"
-                  className="flex-1"
-                />
-                <span>1.2x</span>
-              </div>
-              <div>
-                <select
-                  id="speed-select"
-                  aria-label="Speaking speed select"
-                  value={speed.toFixed(1)}
-                  onChange={(e) => onSpeedChange && onSpeedChange(parseFloat(e.target.value))}
-                  className="w-full text-xs font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-1 px-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer"
-                >
-                  <option value="0.7">0.7x</option>
-                  <option value="0.8">0.8x</option>
-                  <option value="0.9">0.9x</option>
-                  <option value="1.0">1.0x</option>
-                  <option value="1.1">1.1x</option>
-                  <option value="1.2">1.2x</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Pitch */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Pitch</span>
-                <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
-                  {pitch > 0 ? `+${pitch}` : pitch} semitones
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                <span>Low</span>
-                <input
-                  type="range"
-                  min="-5"
-                  max="5"
-                  step="1"
-                  value={pitch}
-                  onChange={(e) => onPitchChange && onPitchChange(parseInt(e.target.value, 10))}
-                  aria-label="Voice pitch"
-                  className="flex-1"
-                />
-                <span>High</span>
-              </div>
-            </div>
-
-            {/* Volume */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Volume</span>
-                <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md border border-brand-100 dark:border-brand-800/60">
-                  {volume}%
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                <span>Low</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={volume}
-                  onChange={(e) => onVolumeChange && onVolumeChange(parseInt(e.target.value, 10))}
-                  aria-label="Output volume"
-                  className="flex-1"
-                />
-                <span>High</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

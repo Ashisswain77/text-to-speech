@@ -276,19 +276,6 @@ export function resolveProviderVoiceId(voiceKey) {
 }
 
 /**
- * Maps SpeechEngine speed into ElevenLabs voice_settings speed.
- * Normalizes and clamps speed between 0.7 and 1.2.
- * @param {number|undefined} speed - SpeechEngine speed setting
- * @returns {number} ElevenLabs speed value
- */
-export function mapProviderSpeed(speed) {
-  if (typeof speed !== 'number' || Number.isNaN(speed)) {
-    return 1.0;
-  }
-  return Math.max(0.7, Math.min(1.2, speed));
-}
-
-/**
  * ElevenLabs Provider Adapter Class
  */
 export class ElevenLabsProvider {
@@ -368,7 +355,7 @@ export class ElevenLabsProvider {
    * Synthesizes speech using the official ElevenLabs REST API.
    *
    * @param {object} normalized - Validated & normalized SpeechEngine request:
-   *   { text, language, voice, speed, pitch, volume }
+   *   { text, language, voice }
    * @param {object} [options={}] - Optional injection for testing (fetchFn, apiKey, modelId)
    * @returns {Promise<{
    *   success: boolean,
@@ -394,9 +381,8 @@ export class ElevenLabsProvider {
 
     // 2. Map SpeechEngine parameters to ElevenLabs parameters
     const providerVoiceId = resolveProviderVoiceId(normalized.voice);
-    const providerSpeed = mapProviderSpeed(normalized.speed);
 
-    // 3. Construct API request payload
+    // 3. Construct API request payload (Note: ElevenLabs voice_settings contains stability and similarity_boost)
     const endpoint = `${ELEVENLABS_API_URL}/text-to-speech/${providerVoiceId}?output_format=mp3_44100_128`;
     const requestBody = {
       text: normalized.text,
@@ -404,7 +390,6 @@ export class ElevenLabsProvider {
       voice_settings: {
         stability: 0.5,
         similarity_boost: 0.75,
-        speed: providerSpeed,
       },
     };
 
@@ -496,6 +481,7 @@ export class ElevenLabsProvider {
         data: {
           provider: 'elevenlabs',
           modelId,
+          voiceId: providerVoiceId,
           format: 'mp3',
           characterCount: normalized.text.length,
           audioSizeBytes: audioBuffer.length,

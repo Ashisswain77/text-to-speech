@@ -24,9 +24,6 @@ export default function CreateSpeechPage() {
   const [text, setText] = useState(''); // Empty initial state as requested
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
   const [selectedVoice, setSelectedVoice] = useState('sarah');
-  const [speed, setSpeed] = useState(1.0);
-  const [pitch, setPitch] = useState(0);
-  const [volume, setVolume] = useState(100);
 
   // Dynamic voice catalog from backend API
   const [languages, setLanguages] = useState([]);
@@ -193,20 +190,11 @@ export default function CreateSpeechPage() {
     revokeAudioUrl();
     setAudioUrl(null);
 
-    // Validate speed (ElevenLabs-supported range: 0.7 - 1.2, default 1.0)
-    const parsedSpeed = Number(speed);
-    const validSpeed = (!Number.isNaN(parsedSpeed) && parsedSpeed >= 0.7 && parsedSpeed <= 1.2)
-      ? Math.round(parsedSpeed * 10) / 10
-      : 1.0;
-
     try {
       const audioBlob = await ttsService.generateSpeechAudio({
         text: text.trim(),
         language: selectedLanguage,
         voice: selectedVoice,
-        speed: validSpeed,
-        pitch,
-        volume,
       });
 
       // Create object URL for the audio blob
@@ -341,12 +329,6 @@ export default function CreateSpeechPage() {
             onSelectLanguage={setSelectedLanguage}
             selectedVoice={selectedVoice}
             onSelectVoice={setSelectedVoice}
-            speed={speed}
-            onSpeedChange={setSpeed}
-            pitch={pitch}
-            onPitchChange={setPitch}
-            volume={volume}
-            onVolumeChange={setVolume}
           />
         </section>
 

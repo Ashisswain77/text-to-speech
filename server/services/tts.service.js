@@ -45,16 +45,10 @@ const VOICES_BY_LANGUAGE = {
 const DEFAULTS = {
   language: 'en-US',
   voice: 'sarah',
-  speed: 1.0,
-  pitch: 0,
-  volume: 100,
 };
 
 const CONSTRAINTS = {
   text: { minLength: 1, maxLength: 5000 },
-  speed: { min: 0.7, max: 1.2 },
-  pitch: { min: -5, max: 5 },
-  volume: { min: 0, max: 100 },
 };
 
 // ---------------------------------------------------------------------------
@@ -112,30 +106,6 @@ function validate(body) {
     errors.push(`Unsupported voice "${voice}".`);
   }
 
-  // --- speed (optional, must be between 0.7 and 1.2) ---
-  if (body.speed !== undefined && body.speed !== null) {
-    const speed = Number(body.speed);
-    if (typeof body.speed !== 'number' || Number.isNaN(speed) || speed < CONSTRAINTS.speed.min || speed > CONSTRAINTS.speed.max) {
-      errors.push(`Speed must be between ${CONSTRAINTS.speed.min} and ${CONSTRAINTS.speed.max}.`);
-    }
-  }
-
-  // --- pitch (optional, integer, -5–5) ---
-  if (body.pitch !== undefined && body.pitch !== null) {
-    const pitch = Number(body.pitch);
-    if (typeof body.pitch !== 'number' || Number.isNaN(pitch) || !Number.isInteger(pitch) || pitch < CONSTRAINTS.pitch.min || pitch > CONSTRAINTS.pitch.max) {
-      errors.push(`Pitch must be an integer between ${CONSTRAINTS.pitch.min} and ${CONSTRAINTS.pitch.max}.`);
-    }
-  }
-
-  // --- volume (optional, integer, 0–100) ---
-  if (body.volume !== undefined && body.volume !== null) {
-    const volume = Number(body.volume);
-    if (typeof body.volume !== 'number' || Number.isNaN(volume) || !Number.isInteger(volume) || volume < CONSTRAINTS.volume.min || volume > CONSTRAINTS.volume.max) {
-      errors.push(`Volume must be an integer between ${CONSTRAINTS.volume.min} and ${CONSTRAINTS.volume.max}.`);
-    }
-  }
-
   return errors;
 }
 
@@ -155,9 +125,6 @@ function normalize(body) {
     text: body.text.trim(),
     language: resolveOptionalString(body.language, DEFAULTS.language),
     voice: resolveOptionalString(body.voice, DEFAULTS.voice).toLowerCase(),
-    speed: (body.speed !== undefined && body.speed !== null) ? body.speed : DEFAULTS.speed,
-    pitch: (body.pitch !== undefined && body.pitch !== null) ? body.pitch : DEFAULTS.pitch,
-    volume: (body.volume !== undefined && body.volume !== null) ? body.volume : DEFAULTS.volume,
   };
 }
 
@@ -173,7 +140,6 @@ function normalize(body) {
 //
 // The provider adapter will:
 //   - Map SpeechEngine voice ID → provider voice ID
-//   - Map speed/pitch/volume → provider parameters
 //   - Return audio data and metadata
 
 // ---------------------------------------------------------------------------

@@ -145,7 +145,7 @@ export const ttsService = {
    * Returns: Blob (audio/mpeg) on success.
    * Throws:  ApiError with parsed JSON message on failure.
    *
-   * @param {object} payload - { text, language, voice, speed, pitch, volume }
+   * @param {object} payload - { text, language, voice }
    * @returns {Promise<Blob>} MP3 audio blob
    */
   generateSpeechAudio: async (payload) => {

@@ -4,6 +4,8 @@ import {
   ElevenLabsProvider,
   resolveProviderVoiceId,
   mapProviderSpeed,
+  mapProviderPitch,
+  applyAudioPitch,
   ELEVENLABS_VOICE_MAP,
   DEFAULT_ELEVENLABS_VOICE_ID,
 } from '../services/providers/elevenlabs.provider.js';
@@ -66,11 +68,39 @@ describe('ElevenLabs Provider Unit Tests', () => {
     });
   });
 
+  describe('Pitch Parameter Mapping', () => {
+    it('preserves valid pitch values within [-10, 10]', () => {
+      assert.strictEqual(mapProviderPitch(-10), -10);
+      assert.strictEqual(mapProviderPitch(-5), -5);
+      assert.strictEqual(mapProviderPitch(0), 0);
+      assert.strictEqual(mapProviderPitch(5), 5);
+      assert.strictEqual(mapProviderPitch(10), 10);
+    });
+
+    it('clamps extreme pitch values within [-10, 10]', () => {
+      assert.strictEqual(mapProviderPitch(-15), -10);
+      assert.strictEqual(mapProviderPitch(25), 10);
+    });
+
+    it('falls back to 0 for non-numeric or missing pitch', () => {
+      assert.strictEqual(mapProviderPitch(null), 0);
+      assert.strictEqual(mapProviderPitch(undefined), 0);
+      assert.strictEqual(mapProviderPitch(NaN), 0);
+      assert.strictEqual(mapProviderPitch('high'), 0);
+    });
+
+    it('applies audio pitch processing without mutating audio integrity on empty/zero', () => {
+      const buffer = Buffer.from([0x01, 0x02]);
+      assert.strictEqual(applyAudioPitch(buffer, 0), buffer);
+      assert.strictEqual(applyAudioPitch(null, 5), null);
+    });
+  });
+
   describe('Missing API Key Handling', () => {
     it('returns statusCode 500 when API key is missing or empty', async () => {
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Test phrase', voice: 'sarah', speed: 1.0 },
+        { text: 'Test phrase', voice: 'sarah', speed: 1.0, pitch: 0 },
         { apiKey: '' }
       );
 
@@ -104,7 +134,7 @@ describe('ElevenLabs Provider Unit Tests', () => {
 
       const provider = new ElevenLabsProvider();
       const result = await provider.synthesize(
-        { text: 'Hello, this is a test speech.', voice: 'david', speed: 1.1 },
+        { text: 'Hello, this is a test speech.', voice: 'david', speed: 1.1, pitch: 3 },
         {
           apiKey: 'test_elevenlabs_key_123',
           modelId: 'eleven_multilingual_v2',
@@ -123,6 +153,9 @@ describe('ElevenLabs Provider Unit Tests', () => {
       assert.strictEqual(capturedBody.model_id, 'eleven_multilingual_v2');
       assert.strictEqual(capturedBody.voice_settings.speed, 1.1);
       assert.strictEqual(capturedBody.voice_settings.stability, 0.5);
+      // Verify pitch and volume are NOT sent in ElevenLabs voice_settings
+      assert.strictEqual(capturedBody.voice_settings.pitch, undefined);
+      assert.strictEqual(capturedBody.voice_settings.volume, undefined);
 
       // Verify returned result
       assert.strictEqual(result.success, true);
@@ -131,6 +164,8 @@ describe('ElevenLabs Provider Unit Tests', () => {
       assert.strictEqual(result.data.format, 'mp3');
       assert.strictEqual(result.data.characterCount, 29);
       assert.strictEqual(result.data.audioSizeBytes, 4);
+      assert.strictEqual(result.data.pitch, 3);
+      assert.strictEqual(result.data.speed, 1.1);
       assert.ok(Buffer.isBuffer(result.audioBuffer));
       assert.strictEqual(result.audioBuffer.length, 4);
     });
