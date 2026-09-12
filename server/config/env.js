@@ -40,9 +40,48 @@ const parseClientUrl = (url) => {
   }
 };
 
+/**
+ * Parses CLIENT_URL into an array of validated origins for CORS.
+ * Supports comma-separated values for multi-origin production deployments.
+ * Falls back to single-origin string for backwards compatibility.
+ *
+ * @param {string|undefined} raw - Raw CLIENT_URL environment variable
+ * @returns {string|string[]} Single origin string or array of origins
+ */
+const parseCorsOrigins = (raw) => {
+  const value = (raw || 'http://localhost:5173').trim();
+  if (!value.includes(',')) {
+    // Single origin — return string for backwards compatibility
+    return parseClientUrl(raw);
+  }
+  // Multiple origins — validate each one
+  const origins = value.split(',').map((u) => u.trim()).filter(Boolean);
+  for (const origin of origins) {
+    try {
+      new URL(origin);
+    } catch {
+      throw new Error(`[EnvConfig] Invalid CLIENT_URL origin: "${origin}". Each origin must be a valid URL.`);
+    }
+  }
+  return origins;
+};
+
+/**
+ * Parses a positive integer from an environment variable with a default.
+ * @param {string|undefined} val
+ * @param {number} fallback
+ * @returns {number}
+ */
+const parsePositiveInt = (val, fallback) => {
+  if (val === undefined || val === null || val === '') return fallback;
+  const parsed = parseInt(val, 10);
+  return Number.isNaN(parsed) || parsed < 1 ? fallback : parsed;
+};
+
 const port = parsePort(process.env.PORT);
 const nodeEnv = (process.env.NODE_ENV || 'development').trim().toLowerCase();
 const clientUrl = parseClientUrl(process.env.CLIENT_URL);
+const corsOrigins = parseCorsOrigins(process.env.CLIENT_URL);
 
 /**
  * Centralized Application Configuration
@@ -53,6 +92,7 @@ export const config = Object.freeze({
   port,
   nodeEnv,
   clientUrl,
+  corsOrigins,
   isProduction: nodeEnv === 'production',
   isDevelopment: nodeEnv === 'development',
   isTest: nodeEnv === 'test',
@@ -68,6 +108,18 @@ export const config = Object.freeze({
     apiKey: process.env.TTS_API_KEY || '',
     region: process.env.TTS_REGION || '',
     endpoint: process.env.TTS_ENDPOINT || '',
+  }),
+
+  // Rate limiting configuration (environment-overridable with secure defaults)
+  rateLimit: Object.freeze({
+    global: Object.freeze({
+      windowMs: parsePositiveInt(process.env.RATE_LIMIT_GLOBAL_WINDOW_MS, 15 * 60 * 1000), // 15 minutes
+      max: parsePositiveInt(process.env.RATE_LIMIT_GLOBAL_MAX, 100),                        // 100 requests per window
+    }),
+    tts: Object.freeze({
+      windowMs: parsePositiveInt(process.env.RATE_LIMIT_TTS_WINDOW_MS, 60 * 1000),          // 1 minute
+      max: parsePositiveInt(process.env.RATE_LIMIT_TTS_MAX, 10),                             // 10 requests per window
+    }),
   }),
 });
 

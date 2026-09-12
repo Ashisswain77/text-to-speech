@@ -65,6 +65,13 @@ const CONSTRAINTS = {
 function validate(body) {
   const errors = [];
 
+  // Defense-in-depth: reject non-object payloads (arrays, strings, numbers, null)
+  // The validateRequest middleware also checks this, but the service layer should be self-contained.
+  if (body === null || body === undefined || typeof body !== 'object' || Array.isArray(body)) {
+    return ['Request body must be a JSON object.'];
+  }
+
+
   // --- text (required, string, non-empty, max 5000 after trim) ---
   if (body.text === undefined || body.text === null) {
     errors.push('Text is required.');
@@ -121,6 +128,8 @@ function validate(body) {
  * @returns {object} Normalized TTS request object
  */
 function normalize(body) {
+  // Explicitly extract only allowed fields — any extra properties (e.g. speed,
+  // pitch, volume, or injected fields) are stripped and never reach the provider.
   return {
     text: body.text.trim(),
     language: resolveOptionalString(body.language, DEFAULTS.language),
