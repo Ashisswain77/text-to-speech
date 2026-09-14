@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Hero from '../components/speech/Hero';
 import TextEditor from '../components/speech/TextEditor';
 import VoiceSettings, { LANGUAGES, VOICES } from '../components/speech/VoiceSettings';
@@ -9,7 +9,13 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import Toast from '../components/common/Toast';
 import StateControllerToolbar from '../components/common/StateControllerToolbar';
 import { ttsService } from '../services/api';
-import { addHistoryItem } from '../services/historyStorage';
+import {
+  addHistoryItem,
+  updateHistoryItem,
+  getStoredFavorites,
+  saveFavorites,
+  removeStoredFavorite,
+} from '../services/historyStorage';
 
 // Flag to easily toggle off dev inspector before production
 const ENABLE_DEV_INSPECTOR = true;
@@ -39,6 +45,18 @@ export default function CreateSpeechPage() {
   const [errorType, setErrorType] = useState(null);
   const [generationError, setGenerationError] = useState(null);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Speech generated successfully.');
+  const [toastType, setToastType] = useState('success');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [currentGeneratedItem, setCurrentGeneratedItem] = useState(null);
+
+  // Auto-dismiss toast notification
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => setShowToast(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   // Track the current blob URL so we can revoke it on new generation or unmount
   const audioUrlRef = useRef(null);
@@ -169,8 +187,20 @@ export default function CreateSpeechPage() {
     }
   };
 
+  // Selected Voice & Language metadata
+  const effectiveVoices = useMemo(() => voices.length > 0 ? voices : (VOICES[selectedLanguage] || VOICES['en-US']), [voices, selectedLanguage]);
+  const effectiveLanguages = useMemo(() => languages.length > 0 ? languages : LANGUAGES, [languages]);
+  const currentVoiceObj = useMemo(
+    () => effectiveVoices.find((v) => v.id === selectedVoice) || effectiveVoices[0] || { name: 'Sarah', gender: 'Female' },
+    [effectiveVoices, selectedVoice]
+  );
+  const currentLangObj = useMemo(
+    () => effectiveLanguages.find((l) => l.id === selectedLanguage) || effectiveLanguages[0] || { name: 'English (US)' },
+    [effectiveLanguages, selectedLanguage]
+  );
+
   // Generate Button — real TTS synthesis (Day 11)
-  const handleGenerateClick = async () => {
+  const handleGenerateClick = useCallback(async () => {
     // Client-side validation
     if (!text.trim()) {
       setErrorType('empty_text');
@@ -182,6 +212,10 @@ export default function CreateSpeechPage() {
     }
     setErrorType(null);
     setGenerationError(null);
+
+    // Reset favorite state for newly generated clip
+    setIsFavorite(false);
+    setCurrentGeneratedItem(null);
 
     // Start loading
     setIsLoading(true);
@@ -203,32 +237,43 @@ export default function CreateSpeechPage() {
       audioUrlRef.current = url;
       setAudioUrl(url);
       setAudioState('generated');
+      setToastMessage('Speech generated successfully.');
+      setToastType('success');
       setShowToast(true);
 
-      // Save to Speech History with real audio
+      const generatedId = `hist-${Date.now()}`;
+      const itemObj = {
+        id: generatedId,
+        title: text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
+        text: text.trim(),
+        language: currentLangObj.name || selectedLanguage,
+        langCode: selectedLanguage,
+        voice: `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
+        voiceId: selectedVoice,
+        duration: "00:05",
+        createdDate: "Today, Just now",
+        addedDate: "Today, Just now",
+        isFavorite: false,
+        audioUrl: url,
+      };
+
+      setCurrentGeneratedItem(itemObj);
+      addHistoryItem(itemObj);
+
+      // Save base64 audio data asynchronously so it persists across refreshes
       try {
         const reader = new FileReader();
         reader.onloadend = () => {
-          const newHistoryItem = {
-            id: `hist-${Date.now()}`,
-            title: text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
-            text: text.trim(),
-            language: currentLangObj.name || selectedLanguage,
-            langCode: selectedLanguage,
-            voice: `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
-            voiceId: selectedVoice,
-            duration: "00:05",
-            createdDate: "Today, Just now",
-            addedDate: "Today, Just now",
-            isFavorite: false,
-            audioUrl: url,
-            audioData: typeof reader.result === 'string' ? reader.result : undefined,
-          };
-          addHistoryItem(newHistoryItem);
+          if (typeof reader.result === 'string') {
+            updateHistoryItem(generatedId, { audioData: reader.result });
+            setCurrentGeneratedItem((prev) =>
+              prev && prev.id === generatedId ? { ...prev, audioData: reader.result } : prev
+            );
+          }
         };
         reader.readAsDataURL(audioBlob);
       } catch (historyErr) {
-        console.warn('Failed saving generated audio to history:', historyErr);
+        console.warn('Failed saving generated audio data to history:', historyErr);
       }
     } catch (err) {
       setGenerationError(err.message || 'Speech generation failed. Please try again.');
@@ -236,13 +281,56 @@ export default function CreateSpeechPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [text, selectedLanguage, selectedVoice, revokeAudioUrl, currentLangObj, currentVoiceObj]);
 
-  // Selected Voice & Language metadata
-  const effectiveVoices = voices.length > 0 ? voices : (VOICES[selectedLanguage] || VOICES['en-US']);
-  const effectiveLanguages = languages.length > 0 ? languages : LANGUAGES;
-  const currentVoiceObj = effectiveVoices.find((v) => v.id === selectedVoice) || effectiveVoices[0] || { name: 'Sarah', gender: 'Female' };
-  const currentLangObj = effectiveLanguages.find((l) => l.id === selectedLanguage) || effectiveLanguages[0] || { name: 'English (US)' };
+  // Toggle favorite for current generated speech and synchronize with Favorites page
+  const handleToggleFavorite = useCallback((nextState) => {
+    const next = typeof nextState === 'boolean' ? nextState : !isFavorite;
+    setIsFavorite(next);
+
+    const activeItem = currentGeneratedItem || {
+      id: `hist-${Date.now()}`,
+      title: text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
+      text: text.trim() || SAMPLE_TEXT,
+      language: currentLangObj.name || selectedLanguage,
+      voice: `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
+      duration: "00:05",
+      addedDate: "Today, Just now",
+      createdDate: "Today, Just now",
+      audioUrl: audioUrl,
+      isFavorite: next,
+    };
+
+    if (!currentGeneratedItem) {
+      setCurrentGeneratedItem(activeItem);
+      addHistoryItem(activeItem);
+    } else {
+      updateHistoryItem(activeItem.id, { isFavorite: next });
+      setCurrentGeneratedItem((prev) => (prev ? { ...prev, isFavorite: next } : prev));
+    }
+
+    const currentFavorites = getStoredFavorites();
+    if (next) {
+      const favEntry = {
+        id: activeItem.id,
+        title: activeItem.title || text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
+        text: activeItem.text || text.trim(),
+        language: activeItem.language || currentLangObj.name,
+        voice: activeItem.voice || `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
+        duration: activeItem.duration || "00:05",
+        addedDate: "Today, Just now",
+        audioUrl: activeItem.audioUrl || audioUrl,
+        audioData: activeItem.audioData,
+      };
+      saveFavorites([favEntry, ...currentFavorites.filter((f) => f.id !== activeItem.id)]);
+      setToastMessage("Saved to Starred Favorites");
+    } else {
+      removeStoredFavorite(activeItem.id);
+      setToastMessage("Removed from Starred Favorites");
+    }
+    setToastType("success");
+    setShowToast(true);
+  }, [isFavorite, currentGeneratedItem, text, currentLangObj, selectedLanguage, currentVoiceObj, audioUrl]);
 
   // Button disabled condition: empty text, over limit, or currently generating
   const isButtonDisabled = text.trim().length === 0 || text.length > 5000 || isLoading;
@@ -260,6 +348,8 @@ export default function CreateSpeechPage() {
             if (state === 'empty') {
               revokeAudioUrl();
               setAudioUrl(null);
+              setIsFavorite(false);
+              setCurrentGeneratedItem(null);
             }
           }}
           audioState={audioState}
@@ -392,6 +482,8 @@ export default function CreateSpeechPage() {
                   setAudioState('empty');
                   revokeAudioUrl();
                   setAudioUrl(null);
+                  setIsFavorite(false);
+                  setCurrentGeneratedItem(null);
                 }}
                 className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
@@ -409,6 +501,8 @@ export default function CreateSpeechPage() {
               voice={currentVoiceObj.name}
               audioUrl={audioUrl}
               isLoading={false}
+              isFavorite={isFavorite}
+              onToggleFavorite={handleToggleFavorite}
             />
           )}
 
@@ -423,7 +517,8 @@ export default function CreateSpeechPage() {
       {/* Toast Notification */}
       {showToast && (
         <Toast
-          message="Speech generated successfully."
+          message={toastMessage}
+          type={toastType}
           onClose={() => setShowToast(false)}
         />
       )}

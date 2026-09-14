@@ -1,14 +1,157 @@
-import React, { useState } from 'react';
-import { Star, Play, Pause, Download, Trash2, Clock } from 'lucide-react';
-import { getStoredFavorites, removeStoredFavorite } from '../services/historyStorage';
+import React, { useState, useEffect, useRef } from 'react';
+import { Star, Play, Pause, Download, Trash2, Clock, Loader2 } from 'lucide-react';
+import { getStoredFavorites, removeStoredFavorite, saveFavorites, mapItemToApiPayload } from '../services/historyStorage';
+import { ttsService } from '../services/api';
+import Toast from '../components/common/Toast';
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState(() => getStoredFavorites());
   const [activeAudioId, setActiveAudioId] = useState(null);
+  const [loadingAudioId, setLoadingAudioId] = useState(null);
+  const [toast, setToast] = useState(null);
+  const audioRef = useRef(null);
 
+  // Cleanup audio playback on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Audio Play / Pause handler
+  const handlePlay = async (item) => {
+    if (activeAudioId === item.id) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setActiveAudioId(null);
+      return;
+    }
+
+    // Stop currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setActiveAudioId(null);
+
+    let audioSource = item.audioUrl || item.audioData;
+
+    // If audio data isn't cached yet, fetch it from TTS API
+    if (!audioSource) {
+      setLoadingAudioId(item.id);
+      try {
+        const payload = mapItemToApiPayload(item);
+        const blob = await ttsService.generateSpeechAudio(payload);
+        const url = URL.createObjectURL(blob);
+        audioSource = url;
+
+        // Persist generated URL to current list and storage
+        const updated = favorites.map((f) => (f.id === item.id ? { ...f, audioUrl: url } : f));
+        setFavorites(updated);
+        saveFavorites(updated);
+      } catch (err) {
+        setLoadingAudioId(null);
+        setToast({
+          message: `Audio not available: ${err.message || 'Failed to retrieve audio'}`,
+          type: 'error',
+        });
+        return;
+      } finally {
+        setLoadingAudioId(null);
+      }
+    }
+
+    try {
+      const audio = new Audio(audioSource);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setActiveAudioId(null);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setActiveAudioId(null);
+        audioRef.current = null;
+        setToast({
+          message: 'Playback error: Audio file could not be played.',
+          type: 'error',
+        });
+      };
+
+      await audio.play();
+      setActiveAudioId(item.id);
+    } catch (err) {
+      setActiveAudioId(null);
+      audioRef.current = null;
+      setToast({
+        message: `Playback failed: ${err.message || 'Unable to play audio.'}`,
+        type: 'error',
+      });
+    }
+  };
+
+  // Download audio handler
+  const handleDownload = async (item) => {
+    let audioSource = item.audioUrl || item.audioData;
+
+    if (!audioSource) {
+      try {
+        setToast({ message: 'Fetching audio for download...', type: 'success' });
+        const payload = mapItemToApiPayload(item);
+        const blob = await ttsService.generateSpeechAudio(payload);
+        const url = URL.createObjectURL(blob);
+        audioSource = url;
+      } catch (err) {
+        setToast({
+          message: `Download failed: ${err.message || 'Unable to fetch audio'}`,
+          type: 'error',
+        });
+        return;
+      }
+    }
+
+    try {
+      const filename = `speechengine-${item.id}.mp3`;
+      const a = document.createElement('a');
+      a.href = audioSource;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setToast({ message: `Downloaded ${filename}`, type: 'success' });
+    } catch (err) {
+      setToast({
+        message: `Download failed: ${err.message || 'Unable to trigger download.'}`,
+        type: 'error',
+      });
+    }
+  };
+
+  // Remove item from favorites and synchronize storage
   const handleRemove = (id) => {
     removeStoredFavorite(id);
     setFavorites((prev) => prev.filter((item) => item.id !== id));
+
+    if (activeAudioId === id && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setActiveAudioId(null);
+    }
+
+    setToast({ message: 'Removed from Starred Favorites', type: 'success' });
   };
 
   return (
@@ -35,6 +178,8 @@ export default function FavoritesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {favorites.map((item) => {
             const isPlaying = activeAudioId === item.id;
+            const isLoadingThisAudio = loadingAudioId === item.id;
+
             return (
               <div
                 key={item.id}
@@ -49,7 +194,7 @@ export default function FavoritesPage() {
                       type="button"
                       onClick={() => handleRemove(item.id)}
                       title="Remove from favorites"
-                      className="text-amber-500 hover:text-slate-400 dark:hover:text-slate-500 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="text-amber-500 hover:text-slate-400 dark:hover:text-slate-500 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       <Star className="w-4.5 h-4.5 fill-amber-400" />
                     </button>
@@ -77,19 +222,27 @@ export default function FavoritesPage() {
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveAudioId(isPlaying ? null : item.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 text-xs font-semibold transition-colors"
+                    onClick={() => handlePlay(item)}
+                    disabled={isLoadingThisAudio}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current translate-x-0.5" />}
-                    <span>{isPlaying ? 'Pause' : 'Play Audio'}</span>
+                    {isLoadingThisAudio ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : isPlaying ? (
+                      <Pause className="w-3.5 h-3.5 fill-current" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5 fill-current translate-x-0.5" />
+                    )}
+                    <span>{isLoadingThisAudio ? 'Loading...' : isPlaying ? 'Pause' : 'Play Audio'}</span>
                   </button>
 
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => alert(`Downloading: ${item.title}.mp3`)}
+                      onClick={() => handleDownload(item)}
                       aria-label="Download audio"
-                      className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      title="Download audio"
+                      className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
                     </button>
@@ -97,7 +250,8 @@ export default function FavoritesPage() {
                       type="button"
                       onClick={() => handleRemove(item.id)}
                       aria-label="Delete favorite"
-                      className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      title="Delete from favorites"
+                      className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -116,6 +270,16 @@ export default function FavoritesPage() {
           </p>
         </div>
       )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type || 'success'}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }
+

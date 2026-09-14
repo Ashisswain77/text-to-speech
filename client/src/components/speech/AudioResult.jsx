@@ -36,6 +36,8 @@ export default function AudioResult({
   voice = "Sarah",
   audioUrl = null,
   isLoading = false,
+  isFavorite: isFavoriteProp,
+  onToggleFavorite,
   onDownload,
 }) {
   const audioRef = useRef(null);
@@ -43,7 +45,8 @@ export default function AudioResult({
 
   // Playback states
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [internalIsFavorite, setInternalIsFavorite] = useState(false);
+  const isFavorite = isFavoriteProp !== undefined ? isFavoriteProp : internalIsFavorite;
   const [progress, setProgress] = useState(0); // 0 to 100
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -522,10 +525,19 @@ export default function AudioResult({
           {/* Favorite Button */}
           <button
             type="button"
-            onClick={() => setIsFavorite(!isFavorite)}
-            aria-label={isFavorite ? "Favorited" : "Favorite audio"}
+            onClick={() => {
+              const next = !isFavorite;
+              if (isFavoriteProp === undefined) {
+                setInternalIsFavorite(next);
+              }
+              if (onToggleFavorite) {
+                onToggleFavorite(next);
+              }
+            }}
+            aria-label={isFavorite ? "Remove from favorites" : "Favorite audio"}
+            title={isFavorite ? "Remove from favorites" : "Save to favorites"}
             className={`
-              p-2.5 rounded-full transition-all duration-150 active:scale-95 border
+              p-2.5 rounded-full transition-all duration-150 active:scale-95 border cursor-pointer
               ${isFavorite
                 ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800/60 shadow-xs'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
