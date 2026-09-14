@@ -416,6 +416,7 @@ export class ElevenLabsProvider {
     // 5. Handle HTTP error responses from provider
     if (!response.ok) {
       let providerErrorDetail = '';
+      let isQuotaExceeded = false;
       try {
         const errorJson = await response.json();
         if (typeof errorJson?.detail === 'string') {
@@ -425,12 +426,30 @@ export class ElevenLabsProvider {
         } else if (errorJson?.message) {
           providerErrorDetail = errorJson.message;
         }
+
+        if (
+          errorJson?.detail?.status === 'quota_exceeded' ||
+          errorJson?.detail?.code === 'quota_exceeded' ||
+          errorJson?.status === 'quota_exceeded' ||
+          providerErrorDetail.toLowerCase().includes('quota') ||
+          providerErrorDetail.toLowerCase().includes('credits')
+        ) {
+          isQuotaExceeded = true;
+        }
       } catch {
         providerErrorDetail = response.statusText || 'Unknown provider error';
       }
 
       // Map specific HTTP statuses safely without leaking credentials
       if (response.status === 401) {
+        if (isQuotaExceeded) {
+          return {
+            success: false,
+            statusCode: 429,
+            message: `ElevenLabs rate limit or quota exceeded: ${providerErrorDetail || 'Character credit quota exhausted.'}`,
+          };
+        }
+
         return {
           success: false,
           statusCode: 502,

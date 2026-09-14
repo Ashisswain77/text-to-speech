@@ -9,6 +9,7 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import Toast from '../components/common/Toast';
 import StateControllerToolbar from '../components/common/StateControllerToolbar';
 import { ttsService } from '../services/api';
+import { addHistoryItem } from '../services/historyStorage';
 
 // Flag to easily toggle off dev inspector before production
 const ENABLE_DEV_INSPECTOR = true;
@@ -203,6 +204,32 @@ export default function CreateSpeechPage() {
       setAudioUrl(url);
       setAudioState('generated');
       setShowToast(true);
+
+      // Save to Speech History with real audio
+      try {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const newHistoryItem = {
+            id: `hist-${Date.now()}`,
+            title: text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
+            text: text.trim(),
+            language: currentLangObj.name || selectedLanguage,
+            langCode: selectedLanguage,
+            voice: `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
+            voiceId: selectedVoice,
+            duration: "00:05",
+            createdDate: "Today, Just now",
+            addedDate: "Today, Just now",
+            isFavorite: false,
+            audioUrl: url,
+            audioData: typeof reader.result === 'string' ? reader.result : undefined,
+          };
+          addHistoryItem(newHistoryItem);
+        };
+        reader.readAsDataURL(audioBlob);
+      } catch (historyErr) {
+        console.warn('Failed saving generated audio to history:', historyErr);
+      }
     } catch (err) {
       setGenerationError(err.message || 'Speech generation failed. Please try again.');
       setAudioState('empty');

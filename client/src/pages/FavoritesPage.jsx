@@ -1,41 +1,13 @@
 import React, { useState } from 'react';
 import { Star, Play, Pause, Download, Trash2, Clock } from 'lucide-react';
-
-const INITIAL_FAVORITES = [
-  {
-    id: 'fav-1',
-    title: "Brand Anthem Voiceover",
-    text: "Artificial intelligence has transformed the landscape of synthetic voice production, allowing creators to produce lifelike narration with nuanced emotional cadence.",
-    language: "English (US)",
-    voice: "Sarah — Female",
-    duration: "00:48",
-    addedDate: "Sep 7, 2026",
-  },
-  {
-    id: 'fav-2',
-    title: "Hindi Product Walkthrough",
-    text: "नमस्ते और वोकलिस में आपका स्वागत है। हमारी तंत्रिका आवाज प्रणाली प्राकृतिक भाषण उत्पन्न करती है।",
-    language: "Hindi",
-    voice: "Priya — Female",
-    duration: "00:35",
-    addedDate: "Sep 6, 2026",
-  },
-  {
-    id: 'fav-3',
-    title: "Keynote Narration Sample",
-    text: "Every great invention begins with a clear articulation of purpose and vision.",
-    language: "English (US)",
-    voice: "David — Male",
-    duration: "00:19",
-    addedDate: "Sep 4, 2026",
-  },
-];
+import { getStoredFavorites, removeStoredFavorite } from '../services/historyStorage';
 
 export default function FavoritesPage() {
-  const [favorites, setFavorites] = useState(INITIAL_FAVORITES);
+  const [favorites, setFavorites] = useState(() => getStoredFavorites());
   const [activeAudioId, setActiveAudioId] = useState(null);
 
   const handleRemove = (id) => {
+    removeStoredFavorite(id);
     setFavorites((prev) => prev.filter((item) => item.id !== id));
   };
 

@@ -99,8 +99,13 @@ export const config = Object.freeze({
   
   // ElevenLabs TTS Provider Configuration (Day 10)
   elevenlabs: Object.freeze({
-    apiKey: (process.env.ELEVENLABS_API_KEY || process.env.TTS_API_KEY || '').trim(),
-    modelId: (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim(),
+    get apiKey() {
+      dotenv.config({ path: serverEnvPath, override: true });
+      return (process.env.ELEVENLABS_API_KEY || process.env.TTS_API_KEY || '').trim();
+    },
+    get modelId() {
+      return (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim();
+    },
   }),
 
   // Reserved for future TTS integration

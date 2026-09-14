@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { Play, Pause, Download, Star, Trash2, Calendar, Clock, Globe } from 'lucide-react';
+import { Play, Pause, Download, Star, Trash2, Calendar, Clock, Globe, Loader2 } from 'lucide-react';
 
 export default function HistoryItem({
   item,
+  isPlaying: isPlayingProp,
+  isLoadingAudio = false,
   onPlay,
   onDownload,
   onDelete,
   onToggleFavorite,
 }) {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [internalIsPlaying, setInternalIsPlaying] = useState(false);
+  const isPlaying = isPlayingProp !== undefined ? isPlayingProp : internalIsPlaying;
 
   return (
     <div className="group p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle hover:shadow-card hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-150">
@@ -44,13 +47,18 @@ export default function HistoryItem({
           <button
             type="button"
             onClick={() => {
-              setIsPlaying(!isPlaying);
+              if (isPlayingProp === undefined) {
+                setInternalIsPlaying(!internalIsPlaying);
+              }
               if (onPlay) onPlay(item);
             }}
-            aria-label={isPlaying ? "Pause audio" : "Play audio"}
-            className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
+            disabled={isLoadingAudio}
+            aria-label={isLoadingAudio ? "Loading audio" : isPlaying ? "Pause audio" : "Play audio"}
+            className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
           >
-            {isPlaying ? (
+            {isLoadingAudio ? (
+              <Loader2 className="w-4 h-4 animate-spin text-brand-600 dark:text-brand-400" />
+            ) : isPlaying ? (
               <Pause className="w-4 h-4 fill-current" />
             ) : (
               <Play className="w-4 h-4 fill-current translate-x-0.5" />
@@ -91,7 +99,7 @@ export default function HistoryItem({
           <button
             type="button"
             onClick={() => {
-              if (onDelete) onDelete(item.id);
+              if (onDelete) onDelete(item);
             }}
             aria-label="Delete history item"
             className="w-9 h-9 rounded-xl text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
