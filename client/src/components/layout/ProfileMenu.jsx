@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   User, 
   Settings, 
@@ -104,10 +105,10 @@ export default function ProfileMenu({ onClose, onSelectTab }) {
 
         {/* Navigation Items with Slide Hover Animations */}
         <div className="space-y-0.5">
-          <button
-            type="button"
+          <Link
+            to="/settings"
             onClick={() => {
-              onSelectTab('settings');
+              if (onSelectTab) onSelectTab('settings');
               onClose();
             }}
             className="group w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 text-left"
@@ -117,12 +118,12 @@ export default function ProfileMenu({ onClose, onSelectTab }) {
               <span>User Profile</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
-          </button>
+          </Link>
 
-          <button
-            type="button"
+          <Link
+            to="/settings"
             onClick={() => {
-              onSelectTab('settings');
+              if (onSelectTab) onSelectTab('settings');
               onClose();
             }}
             className="group w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800 rounded-xl transition-all duration-150 text-left"
@@ -132,7 +133,7 @@ export default function ProfileMenu({ onClose, onSelectTab }) {
               <span>Settings & Preferences</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
-          </button>
+          </Link>
         </div>
 
         {/* Log Out Button */}

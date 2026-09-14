@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Menu, ChevronDown } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
 
@@ -22,15 +23,17 @@ export default function Header({ onToggleSidebar, isSidebarOpen, onSelectTab }) 
 
       {/* Center: Website Name only (no icon image) */}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-        <button 
-          type="button"
-          onClick={() => onSelectTab('create')}
+        <Link 
+          to="/"
+          onClick={() => {
+            if (onSelectTab) onSelectTab('create');
+          }}
           className="focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 py-1 transition-all hover:scale-105 active:scale-95"
         >
           <span className="font-display text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
             SpeechEngine
           </span>
-        </button>
+        </Link>
       </div>
 
       {/* Right: Animated User Profile Menu with internal theme toggle */}

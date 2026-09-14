@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 
-export default function AppShell({ activeTab, onSelectTab, children }) {
+export default function AppShell({ onSelectTab, children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -17,7 +18,6 @@ export default function AppShell({ activeTab, onSelectTab, children }) {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Animated Off-Canvas Sidebar */}
         <Sidebar
-          activeTab={activeTab}
           onSelectTab={onSelectTab}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -26,7 +26,7 @@ export default function AppShell({ activeTab, onSelectTab, children }) {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto min-w-0 bg-slate-50/50 dark:bg-slate-950">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-            {children}
+            {children || <Outlet />}
           </div>
         </main>
       </div>

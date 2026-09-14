@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
 import { 
   Sparkles, 
   History, 
@@ -9,7 +10,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, onSelectTab }) {
   // Close drawer on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -25,24 +26,28 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
   const exploreItems = [
     { 
       id: 'create', 
+      path: '/',
       label: 'Create Speech', 
       icon: Sparkles,
       badge: 'New'
     },
     { 
       id: 'history', 
+      path: '/history',
       label: 'Speech History', 
       icon: History, 
       count: '14'
     },
     { 
       id: 'favorites', 
+      path: '/favorites',
       label: 'Starred Favorites', 
       icon: Star, 
       count: '5'
     },
     { 
       id: 'settings', 
+      path: '/settings',
       label: 'Studio Settings', 
       icon: Settings 
     },
@@ -102,17 +107,17 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
               <nav className="divide-y divide-slate-100/80 dark:divide-slate-800/80" aria-label="Explore Menu">
                 {exploreItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = activeTab === item.id;
 
                   return (
-                    <button
+                    <NavLink
                       key={item.id}
-                      type="button"
+                      to={item.path}
+                      end
                       onClick={() => {
-                        onSelectTab(item.id);
                         onClose();
+                        if (onSelectTab) onSelectTab(item.id);
                       }}
-                      className={`
+                      className={({ isActive }) => `
                         group w-full flex items-center justify-between py-3.5 px-3 rounded-xl transition-all duration-150 text-left
                         ${isActive 
                           ? 'bg-slate-100 dark:bg-slate-800/80 text-brand-600 dark:text-brand-400 font-semibold' 
@@ -120,31 +125,35 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
                         }
                       `}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${
-                          isActive 
-                            ? 'text-brand-600 dark:text-brand-400' 
-                            : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
-                        }`} />
-                        <span className="text-[16px] sm:text-[17px] font-medium tracking-tight truncate">
-                          {item.label}
-                        </span>
-                        {item.badge && (
-                          <span className="font-mono text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-brand-600 text-white">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
+                      {({ isActive }) => (
+                        <>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${
+                              isActive 
+                                ? 'text-brand-600 dark:text-brand-400' 
+                                : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
+                            }`} />
+                            <span className="text-[16px] sm:text-[17px] font-medium tracking-tight truncate">
+                              {item.label}
+                            </span>
+                            {item.badge && (
+                              <span className="font-mono text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-brand-600 text-white">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
 
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {item.count && (
-                          <span className="font-mono text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                            {item.count}
-                          </span>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-800 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </button>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {item.count && (
+                              <span className="font-mono text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                {item.count}
+                              </span>
+                            )}
+                            <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-800 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                          </div>
+                        </>
+                      )}
+                    </NavLink>
                   );
                 })}
               </nav>
