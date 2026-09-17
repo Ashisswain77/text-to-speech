@@ -3,13 +3,12 @@ import { Search, History, AlertTriangle } from 'lucide-react';
 import HistoryItem from '../components/history/HistoryItem';
 import { HistoryItemSkeleton } from '../components/common/Skeleton';
 import Toast from '../components/common/Toast';
-import { ttsService } from '../services/api';
 import {
   getStoredHistory,
   deleteStoredHistoryItem,
   toggleStoredFavorite,
-  updateHistoryItem,
-  mapItemToApiPayload,
+  getAudioSource,
+  dataUriToBlob,
 } from '../services/historyStorage';
 
 export default function HistoryPage() {
@@ -20,22 +19,43 @@ export default function HistoryPage() {
   const [items, setItems] = useState(() => getStoredHistory());
   const [isLoading, setIsLoading] = useState(false);
 
-  // Audio Playback State (Only 1 plays at a time)
+  // Audio Playback State (Only 1 item plays at a time)
   const [playingItemId, setPlayingItemId] = useState(null);
   const [loadingAudioItemId, setLoadingAudioItemId] = useState(null);
   const audioRef = useRef(null);
+  const currentAudioItemIdRef = useRef(null);
+  const activeBlobUrlRef = useRef(null);
 
   // Delete confirmation & Toast state
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Helper to fully stop and reset current audio playback
+  const stopAndResetCurrentAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.onplaying = null;
+      audioRef.current.onpause = null;
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+      audioRef.current = null;
+    }
+    if (activeBlobUrlRef.current) {
+      URL.revokeObjectURL(activeBlobUrlRef.current);
+      activeBlobUrlRef.current = null;
+    }
+    setPlayingItemId(null);
+    setLoadingAudioItemId(null);
+    currentAudioItemIdRef.current = null;
+  };
+
   // Stop audio on component unmount
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      stopAndResetCurrentAudio();
     };
   }, []);
 
@@ -58,9 +78,29 @@ export default function HistoryPage() {
     }
   }, [toast]);
 
+  const handlePlaybackError = (itemId, err = null) => {
+    if (currentAudioItemIdRef.current === itemId) {
+      setLoadingAudioItemId(null);
+      setPlayingItemId(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (activeBlobUrlRef.current) {
+        URL.revokeObjectURL(activeBlobUrlRef.current);
+        activeBlobUrlRef.current = null;
+      }
+      currentAudioItemIdRef.current = null;
+      setToast({
+        message: `Playback error: ${err?.message || 'Audio file could not be played or is unavailable.'}`,
+        type: 'error',
+      });
+    }
+  };
+
   // Play / Pause handler
   const handlePlay = async (item) => {
-    // If clicking on the currently playing item -> pause it
+    // 1. If clicking on the currently playing item -> pause it
     if (playingItemId === item.id) {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -69,113 +109,157 @@ export default function HistoryPage() {
       return;
     }
 
-    // Stop any currently playing audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    setPlayingItemId(null);
-
-    let audioSource = item.audioUrl || item.audioData;
-
-    // If no existing audio source, try fetching real audio from backend API
-    if (!audioSource) {
-      setLoadingAudioItemId(item.id);
+    // 2. If resuming the same item that was previously paused
+    if (
+      audioRef.current &&
+      currentAudioItemIdRef.current === item.id &&
+      audioRef.current.paused
+    ) {
       try {
-        const payload = mapItemToApiPayload(item);
-        const blob = await ttsService.generateSpeechAudio(payload);
-        const url = URL.createObjectURL(blob);
-        audioSource = url;
-
-        // Persist audioUrl to memory & local storage for future plays
-        updateHistoryItem(item.id, { audioUrl: url });
-        setItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, audioUrl: url } : it))
-        );
-
-        // Convert to data URI asynchronously for persistent storage
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            updateHistoryItem(item.id, { audioData: reader.result });
-          }
-        };
-        reader.readAsDataURL(blob);
-      } catch (err) {
-        setLoadingAudioItemId(null);
-        setToast({
-          message: `Audio not available: ${err.message || 'Unable to retrieve audio.'}`,
-          type: 'error',
-        });
+        setLoadingAudioItemId(item.id);
+        await audioRef.current.play();
+        setPlayingItemId(item.id);
         return;
+      } catch {
+        // If resume fails, reset and proceed to fresh initialization
+        stopAndResetCurrentAudio();
       } finally {
         setLoadingAudioItemId(null);
       }
     }
 
-    // Play the audio
+    // 3. Stop & reset previous playback when switching to another item
+    stopAndResetCurrentAudio();
+
+    // 4. Retrieve existing audio source; handle unavailable audio gracefully without generating
+    const rawAudioSource = getAudioSource(item);
+    if (!rawAudioSource) {
+      setToast({
+        message: 'Audio unavailable: No audio recording exists for this clip.',
+        type: 'error',
+      });
+      return;
+    }
+
+    // Convert base64 data URI to a fresh, robust Blob URL for maximum browser audio compatibility
+    let playableUrl = rawAudioSource;
+    if (rawAudioSource.startsWith('data:')) {
+      const blob = dataUriToBlob(rawAudioSource);
+      if (blob) {
+        playableUrl = URL.createObjectURL(blob);
+        activeBlobUrlRef.current = playableUrl;
+      }
+    }
+
+    // 5. Initialize and play audio
+    setLoadingAudioItemId(item.id);
     try {
-      const audio = new Audio(audioSource);
+      const audio = new Audio();
       audioRef.current = audio;
+      currentAudioItemIdRef.current = item.id;
+
+      audio.onplaying = () => {
+        if (currentAudioItemIdRef.current === item.id) {
+          setLoadingAudioItemId(null);
+          setPlayingItemId(item.id);
+        }
+      };
 
       audio.onended = () => {
-        setPlayingItemId(null);
-        audioRef.current = null;
+        if (currentAudioItemIdRef.current === item.id) {
+          setPlayingItemId(null);
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+          }
+        }
       };
 
       audio.onerror = () => {
-        setPlayingItemId(null);
-        audioRef.current = null;
-        setToast({
-          message: 'Playback error: Audio file could not be played.',
-          type: 'error',
-        });
+        // Fallback: If primary audioUrl failed (e.g. expired session blob) and persistent base64 audioData exists
+        if (
+          item.audioData &&
+          playableUrl !== item.audioData &&
+          currentAudioItemIdRef.current === item.id
+        ) {
+          const fallbackBlob = dataUriToBlob(item.audioData);
+          const fallbackUrl = fallbackBlob ? URL.createObjectURL(fallbackBlob) : item.audioData;
+          if (fallbackBlob) activeBlobUrlRef.current = fallbackUrl;
+          playableUrl = fallbackUrl;
+          audio.src = fallbackUrl;
+          audio.play().catch((err) => {
+            handlePlaybackError(item.id, err);
+          });
+          return;
+        }
+        handlePlaybackError(item.id);
       };
 
+      audio.src = playableUrl;
       await audio.play();
       setPlayingItemId(item.id);
     } catch (err) {
-      setPlayingItemId(null);
-      audioRef.current = null;
-      setToast({
-        message: `Playback failed: ${err.message || 'Unable to play audio.'}`,
-        type: 'error',
-      });
+      // Fallback: If audio.play() threw on primary source (e.g. revoked blob URL), try audioData before surfacing error
+      if (
+        item.audioData &&
+        playableUrl !== item.audioData &&
+        currentAudioItemIdRef.current === item.id
+      ) {
+        try {
+          const fallbackBlob = dataUriToBlob(item.audioData);
+          const fallbackUrl = fallbackBlob ? URL.createObjectURL(fallbackBlob) : item.audioData;
+          if (fallbackBlob) activeBlobUrlRef.current = fallbackUrl;
+          if (audioRef.current) {
+            audioRef.current.src = fallbackUrl;
+            await audioRef.current.play();
+            setPlayingItemId(item.id);
+            return;
+          }
+        } catch (fallbackErr) {
+          handlePlaybackError(item.id, fallbackErr);
+          return;
+        }
+      }
+      handlePlaybackError(item.id, err);
+    } finally {
+      if (currentAudioItemIdRef.current === item.id) {
+        setLoadingAudioItemId(null);
+      }
     }
   };
 
-  // Download handler
-  const handleDownload = async (item) => {
-    let audioSource = item.audioUrl || item.audioData;
+  // Download handler (uses existing audio without re-generation)
+  const handleDownload = (item) => {
+    const rawAudioSource = getAudioSource(item);
 
-    if (!audioSource) {
-      try {
-        setToast({ message: 'Fetching audio for download...', type: 'success' });
-        const payload = mapItemToApiPayload(item);
-        const blob = await ttsService.generateSpeechAudio(payload);
-        const url = URL.createObjectURL(blob);
-        audioSource = url;
-        updateHistoryItem(item.id, { audioUrl: url });
-        setItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, audioUrl: url } : it))
-        );
-      } catch (err) {
-        setToast({
-          message: `Download failed: Audio file not available (${err.message || 'missing audio'})`,
-          type: 'error',
-        });
-        return;
+    if (!rawAudioSource) {
+      setToast({
+        message: 'Download unavailable: No audio recording exists for this clip.',
+        type: 'error',
+      });
+      return;
+    }
+
+    let downloadUrl = rawAudioSource;
+    let createdUrl = null;
+    if (rawAudioSource.startsWith('data:')) {
+      const blob = dataUriToBlob(rawAudioSource);
+      if (blob) {
+        createdUrl = URL.createObjectURL(blob);
+        downloadUrl = createdUrl;
       }
     }
 
     try {
       const filename = `speechengine-${item.id}.mp3`;
       const a = document.createElement('a');
-      a.href = audioSource;
+      a.href = downloadUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      if (createdUrl) {
+        setTimeout(() => URL.revokeObjectURL(createdUrl), 5000);
+      }
       setToast({ message: `Downloaded ${filename}`, type: 'success' });
     } catch (err) {
       setToast({
@@ -184,6 +268,7 @@ export default function HistoryPage() {
       });
     }
   };
+
 
   // Toggle favorite handler
   const handleToggleFavorite = (id) => {
@@ -202,13 +287,9 @@ export default function HistoryPage() {
   const confirmDelete = () => {
     if (!itemToDelete) return;
 
-    // Stop audio if deleting the currently playing item
-    if (playingItemId === itemToDelete.id) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setPlayingItemId(null);
+    // Stop audio if deleting the currently active item
+    if (currentAudioItemIdRef.current === itemToDelete.id || playingItemId === itemToDelete.id) {
+      stopAndResetCurrentAudio();
     }
 
     const updated = deleteStoredHistoryItem(itemToDelete.id);

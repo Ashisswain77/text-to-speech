@@ -12,6 +12,10 @@ export default function HistoryItem({
 }) {
   const [internalIsPlaying, setInternalIsPlaying] = useState(false);
   const isPlaying = isPlayingProp !== undefined ? isPlayingProp : internalIsPlaying;
+  const hasAudio = Boolean(
+    (typeof item?.audioUrl === 'string' && item.audioUrl.trim().length > 0) ||
+    (typeof item?.audioData === 'string' && item.audioData.trim().length > 0)
+  );
 
   return (
     <div className="group p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle hover:shadow-card hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-150">
@@ -53,8 +57,29 @@ export default function HistoryItem({
               if (onPlay) onPlay(item);
             }}
             disabled={isLoadingAudio}
-            aria-label={isLoadingAudio ? "Loading audio" : isPlaying ? "Pause audio" : "Play audio"}
-            className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+            aria-label={
+              isLoadingAudio
+                ? "Loading audio"
+                : !hasAudio
+                ? "Audio unavailable"
+                : isPlaying
+                ? "Pause audio"
+                : "Play audio"
+            }
+            title={
+              !hasAudio
+                ? "Audio unavailable for this clip"
+                : isPlaying
+                ? "Pause audio"
+                : "Play audio"
+            }
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 ${
+              !hasAudio
+                ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
+                : isPlaying
+                ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm ring-2 ring-brand-500/20'
+                : 'bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300'
+            }`}
           >
             {isLoadingAudio ? (
               <Loader2 className="w-4 h-4 animate-spin text-brand-600 dark:text-brand-400" />

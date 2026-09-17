@@ -61,7 +61,7 @@ export default function CreateSpeechPage() {
   // Track the current blob URL so we can revoke it on new generation or unmount
   const audioUrlRef = useRef(null);
 
-  // Revoke old blob URL to prevent memory leaks
+  // Revoke old blob URL when replacing with newly generated audio
   const revokeAudioUrl = useCallback(() => {
     if (audioUrlRef.current) {
       URL.revokeObjectURL(audioUrlRef.current);
@@ -69,12 +69,6 @@ export default function CreateSpeechPage() {
     }
   }, []);
 
-  // Cleanup blob URL on unmount
-  useEffect(() => {
-    return () => {
-      revokeAudioUrl();
-    };
-  }, [revokeAudioUrl]);
 
   // Ensure selectedVoice is always valid for selectedLanguage.
   // This is the authoritative guard — catches dropdown changes, async loads, retries, and dev inspector.

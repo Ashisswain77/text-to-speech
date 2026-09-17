@@ -304,3 +304,55 @@ export function mapItemToApiPayload(item) {
     voice,
   };
 }
+
+/**
+ * Safely converts a base64 Data URI (data:audio/mpeg;base64,...) into a Blob.
+ *
+ * @param {string} dataUri
+ * @returns {Blob|null}
+ */
+export function dataUriToBlob(dataUri) {
+  if (!dataUri || typeof dataUri !== 'string') return null;
+  try {
+    const parts = dataUri.split(',');
+    if (parts.length < 2) return null;
+    const header = parts[0];
+    const base64 = parts[1];
+    const mimeMatch = header.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'audio/mpeg';
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  } catch (err) {
+    console.warn('Failed converting data URI to Blob:', err);
+    return null;
+  }
+}
+
+/**
+ * Safely extracts a playable audio source (audioUrl or persistent audioData) from a history item.
+ * Prioritizes persistent audioData when audioUrl is a volatile/session-scoped blob URL.
+ *
+ * @param {object} item - The history item
+ * @returns {string|null} - Playable audio URL or null if none available
+ */
+export function getAudioSource(item) {
+  if (!item || typeof item !== 'object') return null;
+
+  // 1. If persistent audioData is available, prefer it over volatile/session-scoped blob URLs
+  if (typeof item.audioData === 'string' && item.audioData.trim().length > 0) {
+    return item.audioData.trim();
+  }
+
+  // 2. If audioUrl is available (e.g. backend server URL or active blob)
+  if (typeof item.audioUrl === 'string' && item.audioUrl.trim().length > 0) {
+    return item.audioUrl.trim();
+  }
+
+  return null;
+}
+
