@@ -12,10 +12,22 @@ import {
 } from 'lucide-react';
 import { LANGUAGES, VOICES } from '../components/speech/VoiceSettings';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { ttsService } from '../services/api';
+
+function getUserInitials(name, email) {
+  if (name && typeof name === 'string') {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (email && typeof email === 'string') return email.slice(0, 2).toUpperCase();
+  return 'SE';
+}
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState('profile');
   const [defaultLang, setDefaultLang] = useState('en-US');
   const [defaultVoice, setDefaultVoice] = useState('sarah');
@@ -96,7 +108,7 @@ export default function SettingsPage() {
 
                 <div className="flex items-center gap-4 pt-2">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 text-white font-bold text-xl flex items-center justify-center shadow-md">
-                    AV
+                    {getUserInitials(user?.name, user?.email)}
                   </div>
                   <div>
                     <button type="button" className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors">
@@ -111,7 +123,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Full Name</label>
                     <input
                       type="text"
-                      defaultValue="Alexander Vance"
+                      key={`name-${user?.id || 'guest'}`}
+                      defaultValue={user?.name || ''}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none"
                     />
                   </div>
@@ -119,7 +132,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
                     <input
                       type="email"
-                      defaultValue="alex@vocalis.ai"
+                      key={`email-${user?.id || 'guest'}`}
+                      defaultValue={user?.email || ''}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none"
                     />
                   </div>
@@ -249,13 +263,15 @@ export default function SettingsPage() {
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
                   <div className="flex items-center justify-between text-xs font-medium">
                     <span className="text-slate-700 dark:text-slate-200 font-semibold">Active Plan</span>
-                    <span className="text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded border border-brand-200 dark:border-brand-800 font-bold">
-                      Intermediate Tier
+                    <span className="text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded border border-brand-200 dark:border-brand-800 font-bold capitalize">
+                      {user?.tier ? `${user.tier} Tier` : 'Free Tier'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-                    <span>Monthly Quota</span>
-                    <span>12,450 / 50,000 characters used (25%)</span>
+                    <span>Session Request Limit</span>
+                    <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
+                      {user?.charLimit ? `${user.charLimit.toLocaleString()} characters / request` : '5,000 characters / request'}
+                    </span>
                   </div>
                   <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div className="h-full bg-brand-600 rounded-full w-[25%]" />

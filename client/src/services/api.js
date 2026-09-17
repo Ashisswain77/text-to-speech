@@ -53,6 +53,7 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   const config = {
+    credentials: 'include',
     ...options,
     headers,
   };
@@ -155,6 +156,7 @@ export const ttsService = {
     try {
       response = await fetch(url, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'audio/mpeg',
@@ -236,3 +238,40 @@ export const restTestApi = {
   demonstrateNetworkError: () => 
     api.get('https://invalid-nonexistent-domain-rest-test-xyz.example/api'),
 };
+
+/**
+ * Authentication Service
+ * Communicates with Express backend using HTTP-only cookie session.
+ */
+export const authService = {
+  /**
+   * Register a new user account.
+   * @param {{ name: string, email: string, password: string }} payload
+   */
+  register: async (payload) => {
+    return await api.post('/api/auth/register', payload);
+  },
+
+  /**
+   * Authenticate user credentials.
+   * @param {{ email: string, password: string }} payload
+   */
+  login: async (payload) => {
+    return await api.post('/api/auth/login', payload);
+  },
+
+  /**
+   * Fetch current authenticated user profile based on active session cookie.
+   */
+  getCurrentUser: async () => {
+    return await api.get('/api/auth/me');
+  },
+
+  /**
+   * Log out active session and clear HTTP-only cookie.
+   */
+  logout: async () => {
+    return await api.post('/api/auth/logout', {});
+  },
+};
+

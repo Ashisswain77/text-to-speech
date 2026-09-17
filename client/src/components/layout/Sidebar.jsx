@@ -9,8 +9,10 @@ import {
   ChevronRight,
   HelpCircle
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Sidebar({ isOpen, onClose, onSelectTab }) {
+  const { user } = useAuth();
   // Close drawer on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -166,15 +168,17 @@ export default function Sidebar({ isOpen, onClose, onSelectTab }) {
           <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-transparent dark:border-slate-800 text-white shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-300">
-                Studio Quota
+                Session Limit
               </span>
-              <span className="font-mono text-[10px] font-medium bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full border border-brand-500/30">
-                Intermediate
+              <span className="font-mono text-[10px] font-medium bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full border border-brand-500/30 capitalize">
+                {user?.tier ? `${user.tier} Tier` : 'Free Tier'}
               </span>
             </div>
             <div className="flex items-baseline justify-between text-xs text-slate-200 mb-1.5">
-              <span>Characters used</span>
-              <span className="font-mono font-semibold text-white">12,450 / 50,000</span>
+              <span>Characters / request</span>
+              <span className="font-mono font-semibold text-white">
+                {user?.charLimit ? `${user.charLimit.toLocaleString()}` : '5,000'}
+              </span>
             </div>
             <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
               <div className="h-full bg-brand-500 rounded-full w-[25%]" />

@@ -2,9 +2,29 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, ChevronDown } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
+import { useAuth } from '../../context/AuthContext';
+
+function getUserInitials(name, email) {
+  if (name && typeof name === 'string') {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (email && typeof email === 'string') {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return 'SE';
+}
 
 export default function Header({ onToggleSidebar, isSidebarOpen, onSelectTab }) {
+  const { user } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const displayName = user?.name || user?.email?.split('@')[0] || 'Studio User';
+  const initials = getUserInitials(user?.name, user?.email);
+
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-150 relative">
@@ -55,14 +75,14 @@ export default function Header({ onToggleSidebar, isSidebarOpen, onSelectTab }) 
           >
             <div className="relative">
               <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white font-semibold text-xs flex items-center justify-center shadow-xs">
-                AV
+                {initials}
               </div>
               {/* Online indicator dot */}
               <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
             </div>
 
-            <span className="hidden sm:inline-block text-xs font-semibold text-slate-700 dark:text-slate-200">
-              Alexander Vance
+            <span className="hidden sm:inline-block text-xs font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+              {displayName}
             </span>
 
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${showProfileMenu ? 'rotate-180 text-brand-600 dark:text-brand-400' : ''}`} />

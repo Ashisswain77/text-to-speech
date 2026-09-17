@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   User, 
   Settings, 
@@ -7,12 +7,48 @@ import {
   ShieldCheck, 
   ChevronRight, 
   Sun, 
-  Moon
+  Moon,
+  Loader2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+
+function getUserInitials(name, email) {
+  if (name && typeof name === 'string') {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (email && typeof email === 'string') {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return 'SE';
+}
 
 export default function ProfileMenu({ onClose, onSelectTab }) {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const displayName = user?.name || user?.email?.split('@')[0] || 'Studio User';
+  const displayEmail = user?.email || '';
+  const initials = getUserInitials(user?.name, user?.email);
+  const tierName = user?.tier ? `${user.tier.charAt(0).toUpperCase() + user.tier.slice(1)} Tier` : 'Free Tier';
+  const charLimitFormatted = user?.charLimit ? `${(user.charLimit / 1000).toFixed(0)}k chars/req` : '5k chars/req';
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+      onClose();
+      navigate('/login');
+    }
+  };
 
   // Close dropdown on Escape key
   useEffect(() => {
@@ -51,17 +87,17 @@ export default function ProfileMenu({ onClose, onSelectTab }) {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 text-white font-bold text-sm flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-800">
-                AV
+                {initials}
               </div>
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800" />
             </div>
 
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                Alexander Vance
+                {displayName}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                alex@speechengine.ai
+                {displayEmail}
               </p>
             </div>
           </div>
@@ -70,10 +106,10 @@ export default function ProfileMenu({ onClose, onSelectTab }) {
           <div className="mt-3 flex items-center justify-between gap-1.5 px-2.5 py-1.5 bg-brand-50/80 dark:bg-brand-950/60 rounded-lg text-brand-700 dark:text-brand-300 text-[11px] font-semibold border border-brand-100 dark:border-brand-800/50">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 flex-shrink-0" />
-              <span>Intermediate Tier</span>
+              <span>{tierName}</span>
             </div>
             <span className="font-mono text-[10px] text-brand-600/80 dark:text-brand-400/80 font-medium">
-              5k chars/req
+              {charLimitFormatted}
             </span>
           </div>
         </div>
@@ -140,15 +176,17 @@ export default function ProfileMenu({ onClose, onSelectTab }) {
         <div className="pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
           <button
             type="button"
-            onClick={() => {
-              alert("Authentication placeholder: Log out will be connected in subsequent backend phase.");
-              onClose();
-            }}
-            className="group w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all duration-150 text-left"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="group w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all duration-150 text-left disabled:opacity-50"
           >
             <div className="flex items-center gap-2.5 group-hover:translate-x-1 transition-transform duration-150">
-              <LogOut className="w-4 h-4 text-rose-500 dark:text-rose-400" />
-              <span>Log out</span>
+              {isLoggingOut ? (
+                <Loader2 className="w-4 h-4 text-rose-500 dark:text-rose-400 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4 text-rose-500 dark:text-rose-400" />
+              )}
+              <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
             </div>
           </button>
         </div>
