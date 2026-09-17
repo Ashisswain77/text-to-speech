@@ -124,3 +124,43 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
 }
 
+/* Auth Hero & Card Entrance Animations */
+@keyframes hero-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-card-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-hero-fade-in {
+  animation: hero-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-auth-card {
+  animation: auth-card-fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-fade-in,
+  .animate-auth-card {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
