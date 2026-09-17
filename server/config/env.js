@@ -82,6 +82,7 @@ const port = parsePort(process.env.PORT);
 const nodeEnv = (process.env.NODE_ENV || 'development').trim().toLowerCase();
 const clientUrl = parseClientUrl(process.env.CLIENT_URL);
 const corsOrigins = parseCorsOrigins(process.env.CLIENT_URL);
+const databaseUrl = (process.env.DATABASE_URL || '').trim();
 
 /**
  * Centralized Application Configuration
@@ -93,6 +94,7 @@ export const config = Object.freeze({
   nodeEnv,
   clientUrl,
   corsOrigins,
+  databaseUrl,
   isProduction: nodeEnv === 'production',
   isDevelopment: nodeEnv === 'development',
   isTest: nodeEnv === 'test',

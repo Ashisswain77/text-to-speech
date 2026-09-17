@@ -6,6 +6,7 @@ import apiRouter from './routes/index.js';
 import notFound from './middleware/notFound.middleware.js';
 import errorHandler from './middleware/error.middleware.js';
 import { globalApiLimiter } from './middleware/rateLimit.middleware.js';
+import { testConnection, pool } from './config/db.js';
 
 const app = express();
 
@@ -39,12 +40,23 @@ app.use(errorHandler);
 
 // Start HTTP server when executed directly
 if (process.argv[1] && process.argv[1].endsWith('server.js')) {
-  const server = app.listen(config.port, () => {
+  const server = app.listen(config.port, async () => {
     console.log(`SpeechEngine API running on port ${config.port}`);
+    if (config.databaseUrl) {
+      try {
+        const dbInfo = await testConnection();
+        console.log(`Connected to Supabase PostgreSQL (${dbInfo.host}:${dbInfo.port}/${dbInfo.database})`);
+      } catch (err) {
+        console.error(`Database connection check failed: ${err.message}`);
+      }
+    }
   });
 
   // Handle graceful termination
-  const handleShutdown = () => {
+  const handleShutdown = async () => {
+    if (pool) {
+      await pool.end().catch(() => {});
+    }
     server.close(() => {
       process.exit(0);
     });
@@ -53,5 +65,6 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
   process.on('SIGTERM', handleShutdown);
   process.on('SIGINT', handleShutdown);
 }
+
 
 export default app;
