@@ -83,6 +83,12 @@ const nodeEnv = (process.env.NODE_ENV || 'development').trim().toLowerCase();
 const clientUrl = parseClientUrl(process.env.CLIENT_URL);
 const corsOrigins = parseCorsOrigins(process.env.CLIENT_URL);
 const databaseUrl = (process.env.DATABASE_URL || '').trim();
+const jwtSecret = (process.env.JWT_SECRET || (nodeEnv === 'test' ? 'test_jwt_secret_do_not_use_in_production_32chars' : '')).trim();
+const jwtExpiresIn = (process.env.JWT_EXPIRES_IN || '7d').trim();
+
+if (!jwtSecret && nodeEnv === 'production') {
+  throw new Error('[EnvConfig] JWT_SECRET must be set in production environment.');
+}
 
 /**
  * Centralized Application Configuration
@@ -95,9 +101,11 @@ export const config = Object.freeze({
   clientUrl,
   corsOrigins,
   databaseUrl,
+  jwtSecret,
+  jwtExpiresIn,
   isProduction: nodeEnv === 'production',
   isDevelopment: nodeEnv === 'development',
-  isTest: nodeEnv === 'test',
+  isTest: nodeEnv === 'test' || process.execArgv.includes('--test') || Boolean(process.env.NODE_TEST_CONTEXT) || process.argv.some((arg) => arg.includes('test')),
   
   // ElevenLabs TTS Provider Configuration (Day 10)
   elevenlabs: Object.freeze({
@@ -126,6 +134,10 @@ export const config = Object.freeze({
     tts: Object.freeze({
       windowMs: parsePositiveInt(process.env.RATE_LIMIT_TTS_WINDOW_MS, 60 * 1000),          // 1 minute
       max: parsePositiveInt(process.env.RATE_LIMIT_TTS_MAX, 10),                             // 10 requests per window
+    }),
+    auth: Object.freeze({
+      windowMs: parsePositiveInt(process.env.RATE_LIMIT_AUTH_WINDOW_MS, 15 * 60 * 1000), // 15 minutes
+      max: parsePositiveInt(process.env.RATE_LIMIT_AUTH_MAX, 15),                         // 15 requests per window
     }),
   }),
 });

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { config } from './config/env.js';
 import apiRouter from './routes/index.js';
 import notFound from './middleware/notFound.middleware.js';
@@ -25,6 +26,9 @@ app.use(
 // JSON body parsing middleware with size limit to prevent memory exhaustion
 // 5000 chars of UTF-8 text ≈ 15KB; 16kb provides comfortable headroom
 app.use(express.json({ limit: '16kb' }));
+
+// Parse HTTP cookies (used for httpOnly JWT authentication)
+app.use(cookieParser());
 
 // Global API rate limiter — broad protection for all /api/* routes
 app.use('/api', globalApiLimiter);

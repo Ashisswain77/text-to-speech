@@ -53,4 +53,25 @@ export const ttsRateLimiter = rateLimit({
   skip: () => config.isTest,
 });
 
-export default { globalApiLimiter, ttsRateLimiter };
+// ---------------------------------------------------------------------------
+// 3. Auth-Specific Rate Limiter
+//    Applies to auth endpoints (/api/auth/login, /api/auth/register)
+//    Protects against brute-force credential stuffing and registration spam
+// ---------------------------------------------------------------------------
+
+export const authRateLimiter = rateLimit({
+  windowMs: config.rateLimit.auth.windowMs,
+  max: config.rateLimit.auth.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  message: {
+    success: false,
+    message: 'Too many authentication attempts. Please try again later.',
+  },
+
+  // Skip rate limiting in test environment
+  skip: () => config.isTest,
+});
+
+export default { globalApiLimiter, ttsRateLimiter, authRateLimiter };
