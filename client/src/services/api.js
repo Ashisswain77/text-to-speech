@@ -193,7 +193,8 @@ export const ttsService = {
 
   // GET /api/history
   getHistory: async () => {
-    throw new Error('Endpoint GET /api/history is not implemented yet. Scheduled for Day 8 backend creation.');
+    const res = await api.get('/api/history');
+    return res?.data || res;
   },
 
   // GET /api/favorites
@@ -207,8 +208,8 @@ export const ttsService = {
   },
 
   // DELETE /api/history/:id
-  deleteHistoryItem: async (_id) => {
-    throw new Error('Endpoint DELETE /api/history/:id is not implemented yet. Scheduled for Day 8 backend creation.');
+  deleteHistoryItem: async (id) => {
+    return await api.delete(`/api/history/${id}`);
   },
 };
 

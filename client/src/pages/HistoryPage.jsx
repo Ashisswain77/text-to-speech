@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, History, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, History, AlertTriangle, RefreshCw } from 'lucide-react';
 import HistoryItem from '../components/history/HistoryItem';
 import { HistoryItemSkeleton } from '../components/common/Skeleton';
 import Toast from '../components/common/Toast';
+import { ttsService, ApiError } from '../services/api';
 import {
-  getStoredHistory,
-  deleteStoredHistoryItem,
-  toggleStoredFavorite,
   getAudioSource,
   dataUriToBlob,
 } from '../services/historyStorage';
@@ -16,8 +14,9 @@ export default function HistoryPage() {
   const [selectedLang, setSelectedLang] = useState('all');
   const [selectedVoice, setSelectedVoice] = useState('all');
   const [selectedSort, setSelectedSort] = useState('latest');
-  const [items, setItems] = useState(() => getStoredHistory());
-  const [isLoading, setIsLoading] = useState(false);
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   // Audio Playback State (Only 1 item plays at a time)
   const [playingItemId, setPlayingItemId] = useState(null);
@@ -28,7 +27,35 @@ export default function HistoryPage() {
 
   // Delete confirmation & Toast state
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Fetch history from the authenticated API
+  const fetchHistory = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const data = await ttsService.getHistory();
+      setItems(Array.isArray(data?.items) ? data.items : []);
+    } catch (err) {
+      console.error('[HistoryPage] Failed to fetch history:', err.message);
+      if (err instanceof ApiError && err.status === 401) {
+        setFetchError('Your session has expired. Please log in again.');
+      } else if (err instanceof ApiError && err.isNetworkError) {
+        setFetchError('Unable to connect to the server. Please check your network connection.');
+      } else {
+        setFetchError(err.message || 'Failed to load speech history.');
+      }
+      setItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   // Helper to fully stop and reset current audio playback
   const stopAndResetCurrentAudio = () => {
@@ -270,35 +297,55 @@ export default function HistoryPage() {
   };
 
 
-  // Toggle favorite handler
+  // Toggle favorite handler (client-side only for now — no backend favorite API)
   const handleToggleFavorite = (id) => {
-    const updated = toggleStoredFavorite(id);
-    setItems(updated);
-    const item = updated.find((it) => it.id === id);
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, isFavorite: !it.isFavorite } : it
+      )
+    );
+    const item = items.find((it) => it.id === id);
     if (item) {
       setToast({
-        message: item.isFavorite ? 'Saved to Starred Favorites' : 'Removed from Starred Favorites',
+        message: !item.isFavorite ? 'Saved to Starred Favorites' : 'Removed from Starred Favorites',
         type: 'success',
       });
     }
   };
 
-  // Confirm delete handler
-  const confirmDelete = () => {
-    if (!itemToDelete) return;
+  // Confirm delete handler (persists deletion to PostgreSQL via DELETE /api/history/:id)
+  const confirmDelete = async () => {
+    if (!itemToDelete || isDeleting) return;
 
-    // Stop audio if deleting the currently active item
-    if (currentAudioItemIdRef.current === itemToDelete.id || playingItemId === itemToDelete.id) {
-      stopAndResetCurrentAudio();
+    const targetId = itemToDelete.id;
+    setIsDeleting(true);
+
+    try {
+      await ttsService.deleteHistoryItem(targetId);
+
+      // Stop audio if deleting the currently active item
+      if (currentAudioItemIdRef.current === targetId || playingItemId === targetId) {
+        stopAndResetCurrentAudio();
+      }
+
+      // Remove from displayed list upon successful deletion
+      setItems((prev) => prev.filter((it) => it.id !== targetId));
+      setItemToDelete(null);
+      setToast({
+        message: 'Speech deleted successfully',
+        type: 'success',
+      });
+    } catch (err) {
+      console.error('[HistoryPage] Failed to delete speech:', err);
+      // Keep the item visible in the list and show error toast
+      setItemToDelete(null);
+      setToast({
+        message: err?.message || 'Failed to delete speech clip. Please try again.',
+        type: 'error',
+      });
+    } finally {
+      setIsDeleting(false);
     }
-
-    const updated = deleteStoredHistoryItem(itemToDelete.id);
-    setItems(updated);
-    setItemToDelete(null);
-    setToast({
-      message: 'Speech clip permanently deleted from history.',
-      type: 'success',
-    });
   };
 
   // Filter & Search logic
@@ -317,12 +364,14 @@ export default function HistoryPage() {
     })
     .sort((a, b) => {
       if (selectedSort === 'oldest') {
-        return (a.id || '').localeCompare(b.id || '');
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateA - dateB;
       }
       if (selectedSort === 'duration') {
-        return (b.duration || '').localeCompare(a.duration || '');
+        return (b.duration || 0) - (a.duration || 0);
       }
-      // 'latest' default
+      // 'latest' default — API already returns newest first
       return 0;
     });
 
@@ -338,17 +387,6 @@ export default function HistoryPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Browse and manage all previously synthesized voice clips.
           </p>
-        </div>
-
-        {/* State Toggle for Evaluation */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsLoading(!isLoading)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition-colors"
-          >
-            {isLoading ? 'Show Loaded Items' : 'Preview Loading Skeletons'}
-          </button>
         </div>
       </div>
 
@@ -403,7 +441,7 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* History Items List or Skeletons */}
+      {/* History Items List, Skeletons, Error, or Empty State */}
       <div className="space-y-3">
         {isLoading ? (
           <>
@@ -411,6 +449,24 @@ export default function HistoryPage() {
             <HistoryItemSkeleton />
             <HistoryItemSkeleton />
           </>
+        ) : fetchError ? (
+          <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900/40">
+            <AlertTriangle className="w-10 h-10 text-red-400 dark:text-red-500 mx-auto mb-2" />
+            <h3 className="text-sm font-semibold text-red-800 dark:text-red-200">
+              Failed to load history
+            </h3>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-sm mx-auto">
+              {fetchError}
+            </p>
+            <button
+              type="button"
+              onClick={fetchHistory}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-brand-600 hover:bg-brand-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          </div>
         ) : filteredItems.length > 0 ? (
           filteredItems.map((item) => (
             <HistoryItem
@@ -443,7 +499,7 @@ export default function HistoryPage() {
       {itemToDelete && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setItemToDelete(null)}
+          onClick={() => !isDeleting && setItemToDelete(null)}
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-dialog-title"
@@ -473,17 +529,20 @@ export default function HistoryPage() {
             <div className="flex items-center justify-end gap-2.5">
               <button
                 type="button"
-                onClick={() => setItemToDelete(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                disabled={isDeleting}
+                onClick={() => !isDeleting && setItemToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={confirmDelete}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 inline-flex items-center gap-1.5"
               >
-                Delete Clip
+                {isDeleting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                {isDeleting ? 'Deleting...' : 'Delete Clip'}
               </button>
             </div>
           </div>

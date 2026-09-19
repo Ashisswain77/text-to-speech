@@ -1,6 +1,47 @@
 import React, { useState } from 'react';
 import { Play, Pause, Download, Star, Trash2, Calendar, Clock, Globe, Loader2 } from 'lucide-react';
 
+/**
+ * Format an ISO date string or legacy display string for the UI.
+ * Returns a friendly relative/absolute date label.
+ */
+function formatDisplayDate(value) {
+  if (!value) return '';
+  // If it's already a display string (legacy mock data), pass through
+  if (typeof value === 'string' && !value.includes('T') && !value.includes('Z')) {
+    return value;
+  }
+  try {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return value;
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) {
+      return `Today, ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+      return `Yesterday, ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Format duration in seconds to mm:ss, or return a fallback for null/undefined.
+ */
+function formatDuration(value) {
+  if (value === null || value === undefined) return '—';
+  // If it's already a display string like "00:48", pass through
+  if (typeof value === 'string' && value.includes(':')) return value;
+  const seconds = Number(value);
+  if (isNaN(seconds)) return '—';
+  const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${mins}:${secs}`;
+}
+
 export default function HistoryItem({
   item,
   isPlaying: isPlayingProp,
@@ -32,11 +73,11 @@ export default function HistoryItem({
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
               <Clock className="w-3 h-3" />
-              {item.duration}
+              {formatDuration(item.duration)}
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline-flex">
               <Calendar className="w-3 h-3" />
-              {item.createdDate}
+              {formatDisplayDate(item.createdAt || item.createdDate)}
             </span>
           </div>
 

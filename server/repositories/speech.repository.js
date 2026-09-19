@@ -109,8 +109,64 @@ export async function findSpeechById(id) {
   return formatSpeechRecord(result.rows[0]);
 }
 
+/**
+ * Retrieve all speech records belonging to a specific user.
+ *
+ * @param {string} userId - Authoritative authenticated user UUID
+ * @returns {Promise<object[]>} Array of formatted speech records, newest first
+ */
+export async function findSpeechesByUserId(userId) {
+  const sql = `
+    SELECT
+      id,
+      user_id,
+      text,
+      language,
+      voice,
+      audio_url,
+      duration,
+      is_favorite,
+      created_at,
+      updated_at
+    FROM speeches
+    WHERE user_id = $1
+    ORDER BY created_at DESC;
+  `;
+  const result = await query(sql, [userId]);
+  return result.rows.map(formatSpeechRecord);
+}
+
+/**
+ * Permanently delete a speech record, scoped to a specific owner.
+ *
+ * The WHERE clause enforces ownership: only the authenticated user's
+ * own record can be deleted. If the speech does not exist or belongs
+ * to another user, zero rows are affected.
+ *
+ * @param {string} speechId - Speech UUID to delete
+ * @param {string} userId - Authoritative authenticated user UUID
+ * @returns {Promise<boolean>} true if a row was deleted, false otherwise
+ */
+export async function deleteSpeechByIdAndUserId(speechId, userId) {
+  // If speechId is not a valid UUID format, it cannot exist in public.speeches
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!speechId || !UUID_REGEX.test(speechId)) {
+    return false;
+  }
+
+  const sql = `
+    DELETE FROM speeches
+    WHERE id = $1
+      AND user_id = $2;
+  `;
+  const result = await query(sql, [speechId, userId]);
+  return result.rowCount > 0;
+}
+
 export default {
   formatSpeechRecord,
   createSpeech,
   findSpeechById,
+  findSpeechesByUserId,
+  deleteSpeechByIdAndUserId,
 };
