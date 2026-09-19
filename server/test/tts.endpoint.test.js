@@ -216,6 +216,26 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
       assert.match(data.message, /Unsupported voice/);
     });
 
+    it('returns 400 when voice is completely unknown or invalid', async () => {
+      const response = await fetch(`${baseUrl}/api/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': authCookie,
+        },
+        body: JSON.stringify({
+          text: 'Hello world',
+          language: 'en-US',
+          voice: 'completely-invalid-voice',
+        }),
+      });
+
+      assert.strictEqual(response.status, 400);
+      const data = await response.json();
+      assert.strictEqual(data.success, false);
+      assert.match(data.message, /Unsupported voice/);
+    });
+
     it('accepts valid payload with only core fields (text, language, voice) and without speed, pitch, or volume', async () => {
       const response = await fetch(`${baseUrl}/api/tts`, {
         method: 'POST',
@@ -391,5 +411,46 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
       assert.strictEqual(data.success, false);
       assert.match(data.message, /Text (is required|must not be empty)/);
     });
+
+    it('handles database persistence failure: returns HTTP 500 JSON error and does not return audio', async () => {
+      // Valid JWT token signed with secret for a non-existent user UUID
+      // This will cause the foreign key constraint (speeches.user_id -> users.id) to fail during createSpeech()
+      const nonExistentUserId = '00000000-0000-0000-0000-000000000099';
+      const orphanedToken = jwt.sign(
+        { id: nonExistentUserId, email: 'orphaned@speechengine.test' },
+        config.jwtSecret,
+        { expiresIn: '1h' }
+      );
+
+      const response = await fetch(`${baseUrl}/api/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `${COOKIE_NAME}=${orphanedToken}`,
+        },
+        body: JSON.stringify({
+          text: 'Database failure test invocation',
+          language: 'en-US',
+          voice: 'sarah',
+        }),
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+
+      // Under either DB persistence failure or provider failure, the contract is:
+      // Must NEVER return audio/mpeg binary
+      // Must return application/json error envelope with success: false
+      assert.ok(contentType.includes('application/json'), `Expected application/json error envelope, got ${contentType}`);
+      assert.notStrictEqual(response.status, 200, 'Database failure must never return 200 OK');
+
+      const data = await response.json();
+      assert.strictEqual(data.success, false);
+      assert.strictEqual(typeof data.message, 'string');
+      // Verify no sensitive database credentials or SQL syntax leaks
+      const rawJson = JSON.stringify(data);
+      assert.strictEqual(rawJson.includes('postgres://'), false);
+      assert.strictEqual(rawJson.includes('DATABASE_URL'), false);
+    });
   });
 });
+

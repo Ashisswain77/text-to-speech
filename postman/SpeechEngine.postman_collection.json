@@ -105,7 +105,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"text\": \"This request has no authentication cookie or token.\",\n  \"language\": \"en-US\",\n  \"voice\": \"sarah\"\n}"
+              "raw": "{\n  \"text\": \"Hello from SpeechEngine\",\n  \"language\": \"en-US\",\n  \"voice\": \"sarah\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/tts",
@@ -131,7 +131,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"text\": \"Welcome to SpeechEngine. Your speech record is securely saved in PostgreSQL.\",\n  \"language\": \"en-US\",\n  \"voice\": \"sarah\"\n}"
+              "raw": "{\n  \"text\": \"Hello from SpeechEngine\",\n  \"language\": \"en-US\",\n  \"voice\": \"sarah\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/tts",
@@ -142,7 +142,7 @@
           }
         },
         {
-          "name": "03 - Invalid Request",
+          "name": "03 - Invalid Text",
           "request": {
             "method": "POST",
             "header": [
@@ -153,18 +153,62 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"text\": \"   \",\n  \"language\": \"unsupported-lang\",\n  \"voice\": \"invalid-voice\"\n}"
+              "raw": "{\n  \"text\": \"   \",\n  \"language\": \"en-US\",\n  \"voice\": \"sarah\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/tts",
               "host": ["{{baseUrl}}"],
               "path": ["api", "tts"]
             },
-            "description": "Verifies server-side validation error handling with HTTP 400 and JSON error envelope."
+            "description": "Verifies that empty or whitespace-only text is rejected with HTTP 400 Bad Request."
           }
         },
         {
-          "name": "04 - Ownership Check",
+          "name": "04 - Invalid Language",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hello from SpeechEngine\",\n  \"language\": \"unsupported-lang\",\n  \"voice\": \"sarah\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tts"]
+            },
+            "description": "Verifies that unsupported language code is rejected with HTTP 400 Bad Request."
+          }
+        },
+        {
+          "name": "05 - Invalid Voice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hello from SpeechEngine\",\n  \"language\": \"en-US\",\n  \"voice\": \"invalid-voice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tts"]
+            },
+            "description": "Verifies that unknown or incompatible voice is rejected with HTTP 400 Bad Request."
+          }
+        },
+        {
+          "name": "06 - Ownership Check",
           "request": {
             "method": "POST",
             "header": [
