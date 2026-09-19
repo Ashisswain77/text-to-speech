@@ -128,8 +128,7 @@ function validate(body) {
  * @returns {object} Normalized TTS request object
  */
 function normalize(body) {
-  // Explicitly extract only allowed fields — any extra properties (e.g. speed,
-  // pitch, volume, or injected fields) are stripped and never reach the provider.
+  // Explicitly extract only allowed fields — any extra or injected properties are stripped and never reach the provider.
   return {
     text: body.text.trim(),
     language: resolveOptionalString(body.language, DEFAULTS.language),

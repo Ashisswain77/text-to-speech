@@ -75,7 +75,7 @@ export default function Hero({ onInsertSample }) {
           </h1>
 
           <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-            Convert scripts into hyper-realistic, expressive voiceovers with fine-tuned pitch, cadence, and multi-lingual neural accents.
+            Convert scripts into hyper-realistic, expressive voiceovers with expressive cadence and multi-lingual neural accents.
           </p>
         </div>
 

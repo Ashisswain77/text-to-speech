@@ -20,7 +20,7 @@ import {
 // Flag to easily toggle off dev inspector before production
 const ENABLE_DEV_INSPECTOR = true;
 
-const SAMPLE_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. Choose from multi-lingual neural voices with fine-tuned pitch, cadence, and expression.";
+const SAMPLE_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. Choose from multi-lingual neural voices with expressive cadence and natural clarity.";
 
 const NEAR_LIMIT_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. ".repeat(53) + "Final sentence approaching five thousand characters.";
 
