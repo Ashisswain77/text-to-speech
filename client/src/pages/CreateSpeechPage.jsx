@@ -248,14 +248,7 @@ export default function CreateSpeechPage() {
   return (
     <div className="space-y-7 pb-12">
       {/* 1. Hero Section */}
-      <Hero
-        onInsertSample={(sample) => {
-          setText(sample);
-          if (errorType === 'empty_text' || errorType === 'limit_exceeded') {
-            setErrorType(null);
-          }
-        }}
-      />
+      <Hero />
 
       {/* 3. Error Banner if active */}
       {errorType && (
