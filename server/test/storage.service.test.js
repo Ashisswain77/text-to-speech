@@ -365,4 +365,106 @@ describe('Supabase Storage Backend Integration Tests (Phase 1)', () => {
       assert.deepStrictEqual(removedPaths, [pathToDelete]);
     });
   });
+
+  describe('Audio Download Operations (downloadSpeechAudio)', () => {
+    const validPath = 'users/11111111-1111-4111-8111-111111111111/speeches/22222222-2222-4222-8222-222222222222.mp3';
+
+    it('successfully downloads object and returns a binary Buffer', async () => {
+      const { downloadSpeechAudio } = await import('../services/storage.service.js');
+      const rawAudio = Buffer.from('RIFF mock downloaded mp3 stream bytes');
+
+      const mockClient = {
+        storage: {
+          from: (bucket) => {
+            assert.strictEqual(bucket, 'speech-audio');
+            return {
+              download: async (path) => {
+                assert.strictEqual(path, validPath);
+                // Return Blob-like object with arrayBuffer method
+                return {
+                  data: {
+                    arrayBuffer: async () => rawAudio.buffer.slice(rawAudio.byteOffset, rawAudio.byteOffset + rawAudio.byteLength),
+                  },
+                  error: null,
+                };
+              },
+            };
+          },
+        },
+      };
+
+      const result = await downloadSpeechAudio({
+        storagePath: validPath,
+        clientOverride: mockClient,
+      });
+
+      assert.strictEqual(result.success, true);
+      assert.ok(Buffer.isBuffer(result.audioBuffer));
+      assert.strictEqual(result.audioBuffer.toString(), rawAudio.toString());
+      assert.strictEqual(result.error, null);
+    });
+
+    it('identifies 404 / not found error and sets isNotFound: true', async () => {
+      const { downloadSpeechAudio } = await import('../services/storage.service.js');
+
+      const mockClient = {
+        storage: {
+          from: () => ({
+            download: async () => ({
+              data: null,
+              error: { message: 'Object not found', statusCode: 404 },
+            }),
+          }),
+        },
+      };
+
+      const result = await downloadSpeechAudio({
+        storagePath: validPath,
+        clientOverride: mockClient,
+      });
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.audioBuffer, null);
+      assert.strictEqual(result.isNotFound, true);
+    });
+
+    it('sanitizes unexpected download errors without leaking service-role keys', async () => {
+      const { downloadSpeechAudio } = await import('../services/storage.service.js');
+      const secretKey = 'download_secret_service_key_val';
+      process.env.SUPABASE_SERVICE_ROLE_KEY = secretKey;
+
+      const mockClient = {
+        storage: {
+          from: () => ({
+            download: async () => ({
+              data: null,
+              error: { message: `Storage network connection aborted with key: ${secretKey}` },
+            }),
+          }),
+        },
+      };
+
+      const result = await downloadSpeechAudio({
+        storagePath: validPath,
+        clientOverride: mockClient,
+      });
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.audioBuffer, null);
+      assert.strictEqual(result.error.includes(secretKey), false);
+      assert.ok(result.error.includes('[REDACTED_SERVICE_KEY]'));
+    });
+
+    it('rejects invalid or missing storage path parameter', async () => {
+      const { downloadSpeechAudio } = await import('../services/storage.service.js');
+
+      const nullResult = await downloadSpeechAudio({ storagePath: null });
+      assert.strictEqual(nullResult.success, false);
+      assert.strictEqual(nullResult.isNotFound, true);
+
+      const emptyResult = await downloadSpeechAudio({ storagePath: '' });
+      assert.strictEqual(emptyResult.success, false);
+      assert.strictEqual(emptyResult.isNotFound, true);
+    });
+  });
 });

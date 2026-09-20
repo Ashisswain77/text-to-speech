@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Star, Search, AlertTriangle, RefreshCw } from 'lucide-react';
 import HistoryItem from '../components/history/HistoryItem';
 import { HistoryItemSkeleton } from '../components/common/Skeleton';
 import Toast from '../components/common/Toast';
 import { ttsService, ApiError } from '../services/api';
+import { useHistoryAudio } from '../hooks/useHistoryAudio';
 
 export default function FavoritesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,16 +15,25 @@ export default function FavoritesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
-  // Audio Playback State (Only 1 item plays at a time)
-  const [playingItemId, setPlayingItemId] = useState(null);
-  const [loadingAudioItemId, setLoadingAudioItemId] = useState(null);
-  const audioRef = useRef(null);
-  const currentAudioItemIdRef = useRef(null);
-
   // Delete confirmation & Toast state
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Audio Playback Hook (guarantees single active audio & object URL lifecycle)
+  const {
+    playingItemId,
+    loadingAudioItemId,
+    handlePlay,
+    stopAudio,
+  } = useHistoryAudio({
+    onError: (errorMessage) => {
+      setToast({
+        message: errorMessage,
+        type: 'error',
+      });
+    },
+  });
 
   // Fetch history from the authenticated API and filter for favorites
   const fetchFavorites = useCallback(async () => {
@@ -54,29 +64,6 @@ export default function FavoritesPage() {
     fetchFavorites();
   }, [fetchFavorites]);
 
-  // Helper to fully stop and reset current audio playback
-  const stopAndResetCurrentAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.onended = null;
-      audioRef.current.onerror = null;
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-      audioRef.current = null;
-    }
-    setPlayingItemId(null);
-    setLoadingAudioItemId(null);
-    currentAudioItemIdRef.current = null;
-  };
-
-  // Stop audio on component unmount
-  useEffect(() => {
-    return () => {
-      stopAndResetCurrentAudio();
-    };
-  }, []);
-
   // Close delete modal on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -96,58 +83,7 @@ export default function FavoritesPage() {
     }
   }, [toast]);
 
-  // Play handler: preserve existing behavior for unavailable historical audio without creating fake URLs
-  const handlePlay = (item) => {
-    const hasAudio = Boolean(
-      (typeof item?.audioUrl === 'string' && item.audioUrl.trim().length > 0) ||
-      (typeof item?.audioData === 'string' && item.audioData.trim().length > 0)
-    );
 
-    if (!hasAudio) {
-      setToast({
-        message: 'Audio unavailable: No audio recording exists for this clip.',
-        type: 'error',
-      });
-      return;
-    }
-
-    if (playingItemId === item.id) {
-      stopAndResetCurrentAudio();
-      return;
-    }
-
-    stopAndResetCurrentAudio();
-    try {
-      const audio = new Audio(item.audioUrl || item.audioData);
-      audioRef.current = audio;
-      currentAudioItemIdRef.current = item.id;
-      setPlayingItemId(item.id);
-
-      audio.onended = () => {
-        if (currentAudioItemIdRef.current === item.id) {
-          stopAndResetCurrentAudio();
-        }
-      };
-
-      audio.onerror = () => {
-        stopAndResetCurrentAudio();
-        setToast({
-          message: 'Playback error: Audio file could not be played.',
-          type: 'error',
-        });
-      };
-
-      audio.play().catch(() => {
-        stopAndResetCurrentAudio();
-        setToast({
-          message: 'Unable to play audio recording.',
-          type: 'error',
-        });
-      });
-    } catch {
-      stopAndResetCurrentAudio();
-    }
-  };
 
   // Download handler: preserve existing behavior for unavailable historical audio
   const handleDownload = (item) => {
@@ -188,8 +124,8 @@ export default function FavoritesPage() {
       await ttsService.unfavoriteSpeech(id);
 
       // Stop audio if currently playing the item being unfavorited
-      if (currentAudioItemIdRef.current === id || playingItemId === id) {
-        stopAndResetCurrentAudio();
+      if (playingItemId === id || loadingAudioItemId === id) {
+        stopAudio();
       }
 
       // Immediately remove from displayed favorites upon successful response
@@ -219,8 +155,8 @@ export default function FavoritesPage() {
       await ttsService.deleteHistoryItem(targetId);
 
       // Stop audio if deleting the currently active item
-      if (currentAudioItemIdRef.current === targetId || playingItemId === targetId) {
-        stopAndResetCurrentAudio();
+      if (playingItemId === targetId || loadingAudioItemId === targetId) {
+        stopAudio();
       }
 
       // Remove from displayed list upon successful deletion

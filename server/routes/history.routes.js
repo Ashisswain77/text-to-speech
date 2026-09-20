@@ -4,6 +4,7 @@ import {
   deleteSpeech,
   favoriteSpeech,
   unfavoriteSpeech,
+  getSpeechAudio,
 } from '../controllers/history.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 
@@ -15,6 +16,13 @@ const router = Router();
  * @access  Private (Requires valid JWT session)
  */
 router.get('/', requireAuth, getHistory);
+
+/**
+ * @route   GET /api/history/:id/audio
+ * @desc    Stream audio for a speech record owned by the authenticated user
+ * @access  Private (Requires valid JWT session)
+ */
+router.get('/:id/audio', requireAuth, getSpeechAudio);
 
 /**
  * @route   DELETE /api/history/:id
@@ -38,3 +46,4 @@ router.post('/:id/favorite', requireAuth, favoriteSpeech);
 router.delete('/:id/favorite', requireAuth, unfavoriteSpeech);
 
 export default router;
+

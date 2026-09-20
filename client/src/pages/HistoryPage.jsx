@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, History, AlertTriangle, RefreshCw } from 'lucide-react';
 import HistoryItem from '../components/history/HistoryItem';
 import { HistoryItemSkeleton } from '../components/common/Skeleton';
 import Toast from '../components/common/Toast';
 import { ttsService, ApiError } from '../services/api';
+import { useHistoryAudio } from '../hooks/useHistoryAudio';
 import {
   getAudioSource,
   dataUriToBlob,
@@ -18,17 +19,25 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
-  // Audio Playback State (Only 1 item plays at a time)
-  const [playingItemId, setPlayingItemId] = useState(null);
-  const [loadingAudioItemId, setLoadingAudioItemId] = useState(null);
-  const audioRef = useRef(null);
-  const currentAudioItemIdRef = useRef(null);
-  const activeBlobUrlRef = useRef(null);
-
   // Delete confirmation & Toast state
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Audio Playback Hook (guarantees single active audio & object URL lifecycle)
+  const {
+    playingItemId,
+    loadingAudioItemId,
+    handlePlay,
+    stopAudio,
+  } = useHistoryAudio({
+    onError: (errorMessage) => {
+      setToast({
+        message: errorMessage,
+        type: 'error',
+      });
+    },
+  });
 
   // Fetch history from the authenticated API
   const fetchHistory = useCallback(async () => {
@@ -57,35 +66,6 @@ export default function HistoryPage() {
     fetchHistory();
   }, [fetchHistory]);
 
-  // Helper to fully stop and reset current audio playback
-  const stopAndResetCurrentAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.onended = null;
-      audioRef.current.onerror = null;
-      audioRef.current.onplaying = null;
-      audioRef.current.onpause = null;
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-      audioRef.current = null;
-    }
-    if (activeBlobUrlRef.current) {
-      URL.revokeObjectURL(activeBlobUrlRef.current);
-      activeBlobUrlRef.current = null;
-    }
-    setPlayingItemId(null);
-    setLoadingAudioItemId(null);
-    currentAudioItemIdRef.current = null;
-  };
-
-  // Stop audio on component unmount
-  useEffect(() => {
-    return () => {
-      stopAndResetCurrentAudio();
-    };
-  }, []);
-
   // Close delete modal on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -105,154 +85,7 @@ export default function HistoryPage() {
     }
   }, [toast]);
 
-  const handlePlaybackError = (itemId, err = null) => {
-    if (currentAudioItemIdRef.current === itemId) {
-      setLoadingAudioItemId(null);
-      setPlayingItemId(null);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      if (activeBlobUrlRef.current) {
-        URL.revokeObjectURL(activeBlobUrlRef.current);
-        activeBlobUrlRef.current = null;
-      }
-      currentAudioItemIdRef.current = null;
-      setToast({
-        message: `Playback error: ${err?.message || 'Audio file could not be played or is unavailable.'}`,
-        type: 'error',
-      });
-    }
-  };
 
-  // Play / Pause handler
-  const handlePlay = async (item) => {
-    // 1. If clicking on the currently playing item -> pause it
-    if (playingItemId === item.id) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      setPlayingItemId(null);
-      return;
-    }
-
-    // 2. If resuming the same item that was previously paused
-    if (
-      audioRef.current &&
-      currentAudioItemIdRef.current === item.id &&
-      audioRef.current.paused
-    ) {
-      try {
-        setLoadingAudioItemId(item.id);
-        await audioRef.current.play();
-        setPlayingItemId(item.id);
-        return;
-      } catch {
-        // If resume fails, reset and proceed to fresh initialization
-        stopAndResetCurrentAudio();
-      } finally {
-        setLoadingAudioItemId(null);
-      }
-    }
-
-    // 3. Stop & reset previous playback when switching to another item
-    stopAndResetCurrentAudio();
-
-    // 4. Retrieve existing audio source; handle unavailable audio gracefully without generating
-    const rawAudioSource = getAudioSource(item);
-    if (!rawAudioSource) {
-      setToast({
-        message: 'Audio unavailable: No audio recording exists for this clip.',
-        type: 'error',
-      });
-      return;
-    }
-
-    // Convert base64 data URI to a fresh, robust Blob URL for maximum browser audio compatibility
-    let playableUrl = rawAudioSource;
-    if (rawAudioSource.startsWith('data:')) {
-      const blob = dataUriToBlob(rawAudioSource);
-      if (blob) {
-        playableUrl = URL.createObjectURL(blob);
-        activeBlobUrlRef.current = playableUrl;
-      }
-    }
-
-    // 5. Initialize and play audio
-    setLoadingAudioItemId(item.id);
-    try {
-      const audio = new Audio();
-      audioRef.current = audio;
-      currentAudioItemIdRef.current = item.id;
-
-      audio.onplaying = () => {
-        if (currentAudioItemIdRef.current === item.id) {
-          setLoadingAudioItemId(null);
-          setPlayingItemId(item.id);
-        }
-      };
-
-      audio.onended = () => {
-        if (currentAudioItemIdRef.current === item.id) {
-          setPlayingItemId(null);
-          if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-          }
-        }
-      };
-
-      audio.onerror = () => {
-        // Fallback: If primary audioUrl failed (e.g. expired session blob) and persistent base64 audioData exists
-        if (
-          item.audioData &&
-          playableUrl !== item.audioData &&
-          currentAudioItemIdRef.current === item.id
-        ) {
-          const fallbackBlob = dataUriToBlob(item.audioData);
-          const fallbackUrl = fallbackBlob ? URL.createObjectURL(fallbackBlob) : item.audioData;
-          if (fallbackBlob) activeBlobUrlRef.current = fallbackUrl;
-          playableUrl = fallbackUrl;
-          audio.src = fallbackUrl;
-          audio.play().catch((err) => {
-            handlePlaybackError(item.id, err);
-          });
-          return;
-        }
-        handlePlaybackError(item.id);
-      };
-
-      audio.src = playableUrl;
-      await audio.play();
-      setPlayingItemId(item.id);
-    } catch (err) {
-      // Fallback: If audio.play() threw on primary source (e.g. revoked blob URL), try audioData before surfacing error
-      if (
-        item.audioData &&
-        playableUrl !== item.audioData &&
-        currentAudioItemIdRef.current === item.id
-      ) {
-        try {
-          const fallbackBlob = dataUriToBlob(item.audioData);
-          const fallbackUrl = fallbackBlob ? URL.createObjectURL(fallbackBlob) : item.audioData;
-          if (fallbackBlob) activeBlobUrlRef.current = fallbackUrl;
-          if (audioRef.current) {
-            audioRef.current.src = fallbackUrl;
-            await audioRef.current.play();
-            setPlayingItemId(item.id);
-            return;
-          }
-        } catch (fallbackErr) {
-          handlePlaybackError(item.id, fallbackErr);
-          return;
-        }
-      }
-      handlePlaybackError(item.id, err);
-    } finally {
-      if (currentAudioItemIdRef.current === item.id) {
-        setLoadingAudioItemId(null);
-      }
-    }
-  };
 
   // Download handler (uses existing audio without re-generation)
   const handleDownload = (item) => {
@@ -341,8 +174,8 @@ export default function HistoryPage() {
       await ttsService.deleteHistoryItem(targetId);
 
       // Stop audio if deleting the currently active item
-      if (currentAudioItemIdRef.current === targetId || playingItemId === targetId) {
-        stopAndResetCurrentAudio();
+      if (playingItemId === targetId || loadingAudioItemId === targetId) {
+        stopAudio();
       }
 
       // Remove from displayed list upon successful deletion

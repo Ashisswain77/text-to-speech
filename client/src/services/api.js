@@ -6,7 +6,7 @@
  */
 
 // Base URL configured from Vite environment variables without hardcoded endpoints
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+export const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '';
 
 /**
  * Standardized API Error class providing distinct error categorization
@@ -217,7 +217,75 @@ export const ttsService = {
   deleteHistoryItem: async (id) => {
     return await api.delete(`/api/history/${id}`);
   },
+
+  // GET /api/history/:id/audio (Phase 4 historical audio playback)
+  getSpeechAudio: async (id) => {
+    return await getSpeechAudio(id);
+  },
 };
+
+/**
+ * GET /api/history/:id/audio
+ * 
+ * Fetches authenticated private speech audio as a binary Blob.
+ * 
+ * @param {string} id - Speech record UUID
+ * @returns {Promise<Blob>} Raw audio/mpeg Blob
+ */
+export async function getSpeechAudio(id) {
+  if (!id || typeof id !== 'string') {
+    throw new ApiError('Invalid speech ID for audio playback.', { status: 400 });
+  }
+
+  const url = `${API_BASE_URL.replace(/\/$/, '')}/api/history/${encodeURIComponent(id)}/audio`;
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'audio/mpeg, application/json',
+      },
+    });
+  } catch (err) {
+    throw new ApiError(
+      `Network error: Unable to reach the server. (${err.message})`,
+      { isNetworkError: true }
+    );
+  }
+
+  // Error responses come back as JSON
+  if (!response.ok) {
+    let data = null;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+    } else {
+      try {
+        const text = await response.text();
+        data = text ? { message: text } : null;
+      } catch {
+        data = null;
+      }
+    }
+
+    const errorMsg = data?.message || data?.error || `HTTP Error ${response.status}: ${response.statusText || 'Failed to fetch speech audio'}`;
+    throw new ApiError(errorMsg, {
+      status: response.status,
+      statusText: response.statusText,
+      data,
+      isNetworkError: false,
+    });
+  }
+
+  // Success: return raw audio binary as a Blob
+  return await response.blob();
+}
 
 /**
  * SAFE REST COMMUNICATION DEMONSTRATION HELPERS (Day 6 Only)

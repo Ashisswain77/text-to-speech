@@ -282,10 +282,90 @@ export async function deleteSpeechAudio({
   }
 }
 
+/**
+ * Downloads a speech audio file from private Supabase Storage as a binary Buffer.
+ *
+ * @param {object} params
+ * @param {string} params.storagePath - Validated storage object path from DB record
+ * @param {string} [params.bucketName] - Target bucket (defaults to speech-audio)
+ * @param {object} [params.clientOverride] - Optional client for testing/mocking
+ * @returns {Promise<{ success: boolean, audioBuffer: Buffer|null, isNotFound?: boolean, error: string|null }>}
+ */
+export async function downloadSpeechAudio({
+  storagePath,
+  bucketName = config.supabase.bucket,
+  clientOverride = null,
+}) {
+  if (!storagePath || typeof storagePath !== 'string') {
+    return {
+      success: false,
+      audioBuffer: null,
+      isNotFound: true,
+      error: 'Invalid or missing storage path provided for download.',
+    };
+  }
+
+  try {
+    const client = clientOverride || getStorageClient();
+    const targetBucket = bucketName || config.supabase.bucket;
+
+    const { data, error } = await client.storage
+      .from(targetBucket)
+      .download(storagePath);
+
+    if (error) {
+      const isNotFound =
+        error.statusCode === 404 ||
+        error.status === 404 ||
+        error.statusCode === '404' ||
+        /not found/i.test(error.message || '');
+
+      return {
+        success: false,
+        audioBuffer: null,
+        isNotFound: Boolean(isNotFound),
+        error: sanitizeErrorMessage(error),
+      };
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        audioBuffer: null,
+        isNotFound: true,
+        error: 'Storage object not found.',
+      };
+    }
+
+    let buffer;
+    if (Buffer.isBuffer(data)) {
+      buffer = data;
+    } else if (typeof data.arrayBuffer === 'function') {
+      const arrayBuffer = await data.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } else {
+      buffer = Buffer.from(data);
+    }
+
+    return {
+      success: true,
+      audioBuffer: buffer,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      audioBuffer: null,
+      error: sanitizeErrorMessage(err),
+    };
+  }
+}
+
 export default {
   checkBucketExists,
   verifyStorageHealth,
   buildSpeechAudioPath,
   uploadSpeechAudio,
   deleteSpeechAudio,
+  downloadSpeechAudio,
 };

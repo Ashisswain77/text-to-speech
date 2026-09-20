@@ -54,6 +54,7 @@ export default function HistoryItem({
   const [internalIsPlaying, setInternalIsPlaying] = useState(false);
   const isPlaying = isPlayingProp !== undefined ? isPlayingProp : internalIsPlaying;
   const hasAudio = Boolean(
+    (typeof item?.id === 'string' && item.id.trim().length > 0) ||
     (typeof item?.audioUrl === 'string' && item.audioUrl.trim().length > 0) ||
     (typeof item?.audioData === 'string' && item.audioData.trim().length > 0)
   );

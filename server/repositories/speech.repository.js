@@ -245,6 +245,44 @@ export async function updateSpeechAudioUrlByIdAndUserId(speechId, userId, audioU
   return formatSpeechRecord(result.rows[0]);
 }
 
+/**
+ * Retrieve the audio reference for a specific speech record, strictly scoped to the owner.
+ * Returns only the minimal required fields: id, user_id, audio_url.
+ *
+ * @param {string} speechId - Speech UUID to locate
+ * @param {string} userId - Authoritative authenticated user UUID
+ * @returns {Promise<{ id: string, userId: string, audioUrl: string|null }|null>}
+ */
+export async function getSpeechAudioReferenceByIdAndUserId(speechId, userId) {
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!speechId || !UUID_REGEX.test(speechId) || !userId || !UUID_REGEX.test(userId)) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      id,
+      user_id,
+      audio_url
+    FROM speeches
+    WHERE id = $1
+      AND user_id = $2
+    LIMIT 1;
+  `;
+
+  const result = await query(sql, [speechId, userId]);
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    userId: row.user_id,
+    audioUrl: row.audio_url,
+  };
+}
+
 export default {
   formatSpeechRecord,
   createSpeech,
@@ -253,4 +291,5 @@ export default {
   deleteSpeechByIdAndUserId,
   updateSpeechFavoriteByIdAndUserId,
   updateSpeechAudioUrlByIdAndUserId,
+  getSpeechAudioReferenceByIdAndUserId,
 };
