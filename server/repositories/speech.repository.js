@@ -206,6 +206,45 @@ export async function updateSpeechFavoriteByIdAndUserId(speechId, userId, isFavo
   return formatSpeechRecord(result.rows[0]);
 }
 
+/**
+ * Update the audio_url of a speech record, strictly scoped to the owner.
+ *
+ * @param {string} speechId - Speech UUID to update
+ * @param {string} userId - Authoritative authenticated user UUID
+ * @param {string} audioUrl - Storage object reference/path
+ * @returns {Promise<object|null>} Formatted updated record, or null if not found/not owned
+ */
+export async function updateSpeechAudioUrlByIdAndUserId(speechId, userId, audioUrl) {
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!speechId || !UUID_REGEX.test(speechId)) {
+    return null;
+  }
+
+  const sql = `
+    UPDATE speeches
+    SET audio_url = $1,
+        updated_at = NOW()
+    WHERE id = $2
+      AND user_id = $3
+    RETURNING
+      id,
+      user_id,
+      text,
+      language,
+      voice,
+      audio_url,
+      duration,
+      is_favorite,
+      created_at,
+      updated_at;
+  `;
+  const result = await query(sql, [audioUrl, speechId, userId]);
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return formatSpeechRecord(result.rows[0]);
+}
+
 export default {
   formatSpeechRecord,
   createSpeech,
@@ -213,4 +252,5 @@ export default {
   findSpeechesByUserId,
   deleteSpeechByIdAndUserId,
   updateSpeechFavoriteByIdAndUserId,
+  updateSpeechAudioUrlByIdAndUserId,
 };

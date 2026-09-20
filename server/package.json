@@ -9,7 +9,8 @@
     "dev": "nodemon server.js",
     "test": "node --test",
     "db:test": "node scripts/test-db.js",
-    "db:migrate": "node scripts/migrate.js"
+    "db:migrate": "node scripts/migrate.js",
+    "storage:test": "node scripts/verify-storage.js"
   },
   "keywords": [
     "speechengine",
@@ -20,6 +21,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

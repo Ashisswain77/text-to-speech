@@ -187,8 +187,14 @@ export const ttsService = {
       });
     }
 
-    // Success: return the audio as a Blob
-    return await response.blob();
+    // Success: return the audio as a Blob and the persisted PostgreSQL speech UUID
+    const audioBlob = await response.blob();
+    const speechId = response.headers.get('X-Speech-Id') || null;
+
+    return {
+      audioBlob,
+      speechId,
+    };
   },
 
   // GET /api/history

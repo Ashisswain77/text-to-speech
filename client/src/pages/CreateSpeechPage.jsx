@@ -9,13 +9,7 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import Toast from '../components/common/Toast';
 import StateControllerToolbar from '../components/common/StateControllerToolbar';
 import { ttsService } from '../services/api';
-import {
-  addHistoryItem,
-  updateHistoryItem,
-  getStoredFavorites,
-  saveFavorites,
-  removeStoredFavorite,
-} from '../services/historyStorage';
+
 
 // Flag to easily toggle off dev inspector before production
 const ENABLE_DEV_INSPECTOR = true;
@@ -48,7 +42,7 @@ export default function CreateSpeechPage() {
   const [toastMessage, setToastMessage] = useState('Speech generated successfully.');
   const [toastType, setToastType] = useState('success');
   const [isFavorite, setIsFavorite] = useState(false);
-  const [currentGeneratedItem, setCurrentGeneratedItem] = useState(null);
+  const [currentSpeechId, setCurrentSpeechId] = useState(null);
 
   // Auto-dismiss toast notification
   useEffect(() => {
@@ -209,7 +203,7 @@ export default function CreateSpeechPage() {
 
     // Reset favorite state for newly generated clip
     setIsFavorite(false);
-    setCurrentGeneratedItem(null);
+    setCurrentSpeechId(null);
 
     // Start loading
     setIsLoading(true);
@@ -220,7 +214,7 @@ export default function CreateSpeechPage() {
     setAudioUrl(null);
 
     try {
-      const audioBlob = await ttsService.generateSpeechAudio({
+      const { audioBlob, speechId } = await ttsService.generateSpeechAudio({
         text: text.trim(),
         language: selectedLanguage,
         voice: selectedVoice,
@@ -230,101 +224,49 @@ export default function CreateSpeechPage() {
       const url = URL.createObjectURL(audioBlob);
       audioUrlRef.current = url;
       setAudioUrl(url);
+      setCurrentSpeechId(speechId || null);
       setAudioState('generated');
       setToastMessage('Speech generated successfully.');
       setToastType('success');
       setShowToast(true);
-
-      const generatedId = `hist-${Date.now()}`;
-      const itemObj = {
-        id: generatedId,
-        title: text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
-        text: text.trim(),
-        language: currentLangObj.name || selectedLanguage,
-        langCode: selectedLanguage,
-        voice: `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
-        voiceId: selectedVoice,
-        duration: "00:05",
-        createdDate: "Today, Just now",
-        addedDate: "Today, Just now",
-        isFavorite: false,
-        audioUrl: url,
-      };
-
-      setCurrentGeneratedItem(itemObj);
-      addHistoryItem(itemObj);
-
-      // Save base64 audio data asynchronously so it persists across refreshes
-      try {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            updateHistoryItem(generatedId, { audioData: reader.result });
-            setCurrentGeneratedItem((prev) =>
-              prev && prev.id === generatedId ? { ...prev, audioData: reader.result } : prev
-            );
-          }
-        };
-        reader.readAsDataURL(audioBlob);
-      } catch (historyErr) {
-        console.warn('Failed saving generated audio data to history:', historyErr);
-      }
     } catch (err) {
       setGenerationError(err.message || 'Speech generation failed. Please try again.');
       setAudioState('empty');
     } finally {
       setIsLoading(false);
     }
-  }, [text, selectedLanguage, selectedVoice, revokeAudioUrl, currentLangObj, currentVoiceObj]);
+  }, [text, selectedLanguage, selectedVoice, revokeAudioUrl]);
 
-  // Toggle favorite for current generated speech and synchronize with Favorites page
-  const handleToggleFavorite = useCallback((nextState) => {
-    const next = typeof nextState === 'boolean' ? nextState : !isFavorite;
-    setIsFavorite(next);
-
-    const activeItem = currentGeneratedItem || {
-      id: `hist-${Date.now()}`,
-      title: text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
-      text: text.trim() || SAMPLE_TEXT,
-      language: currentLangObj.name || selectedLanguage,
-      voice: `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
-      duration: "00:05",
-      addedDate: "Today, Just now",
-      createdDate: "Today, Just now",
-      audioUrl: audioUrl,
-      isFavorite: next,
-    };
-
-    if (!currentGeneratedItem) {
-      setCurrentGeneratedItem(activeItem);
-      addHistoryItem(activeItem);
-    } else {
-      updateHistoryItem(activeItem.id, { isFavorite: next });
-      setCurrentGeneratedItem((prev) => (prev ? { ...prev, isFavorite: next } : prev));
+  // Toggle favorite for current generated speech and synchronize with backend
+  const handleToggleFavorite = useCallback(async (nextState) => {
+    if (!currentSpeechId) {
+      setToastMessage('Cannot update favorite: speech record ID is missing.');
+      setToastType('error');
+      setShowToast(true);
+      return;
     }
 
-    const currentFavorites = getStoredFavorites();
-    if (next) {
-      const favEntry = {
-        id: activeItem.id,
-        title: activeItem.title || text.trim().slice(0, 35) + (text.trim().length > 35 ? '...' : ''),
-        text: activeItem.text || text.trim(),
-        language: activeItem.language || currentLangObj.name,
-        voice: activeItem.voice || `${currentVoiceObj.name} (${currentVoiceObj.gender || 'Neural'})`,
-        duration: activeItem.duration || "00:05",
-        addedDate: "Today, Just now",
-        audioUrl: activeItem.audioUrl || audioUrl,
-        audioData: activeItem.audioData,
-      };
-      saveFavorites([favEntry, ...currentFavorites.filter((f) => f.id !== activeItem.id)]);
-      setToastMessage("Saved to Starred Favorites");
-    } else {
-      removeStoredFavorite(activeItem.id);
-      setToastMessage("Removed from Starred Favorites");
+    const willFavorite = typeof nextState === 'boolean' ? nextState : !isFavorite;
+
+    try {
+      if (willFavorite) {
+        await ttsService.favoriteSpeech(currentSpeechId);
+      } else {
+        await ttsService.unfavoriteSpeech(currentSpeechId);
+      }
+
+      setIsFavorite(willFavorite);
+      setToastMessage(willFavorite ? 'Saved to Starred Favorites' : 'Removed from Starred Favorites');
+      setToastType('success');
+      setShowToast(true);
+    } catch (err) {
+      console.error('[CreateSpeechPage] Failed to toggle favorite:', err);
+      // Preserve previous star state, show error toast
+      setToastMessage(err?.message || 'Failed to update favorite status. Please try again.');
+      setToastType('error');
+      setShowToast(true);
     }
-    setToastType("success");
-    setShowToast(true);
-  }, [isFavorite, currentGeneratedItem, text, currentLangObj, selectedLanguage, currentVoiceObj, audioUrl]);
+  }, [currentSpeechId, isFavorite]);
 
   // Button disabled condition: empty text, over limit, or currently generating
   const isButtonDisabled = text.trim().length === 0 || text.length > 5000 || isLoading;
@@ -343,7 +285,7 @@ export default function CreateSpeechPage() {
               revokeAudioUrl();
               setAudioUrl(null);
               setIsFavorite(false);
-              setCurrentGeneratedItem(null);
+              setCurrentSpeechId(null);
             }
           }}
           audioState={audioState}
@@ -477,7 +419,7 @@ export default function CreateSpeechPage() {
                   revokeAudioUrl();
                   setAudioUrl(null);
                   setIsFavorite(false);
-                  setCurrentGeneratedItem(null);
+                  setCurrentSpeechId(null);
                 }}
                 className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >

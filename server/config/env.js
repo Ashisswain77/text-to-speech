@@ -125,6 +125,35 @@ export const config = Object.freeze({
     endpoint: process.env.TTS_ENDPOINT || '',
   }),
 
+  // Supabase Storage Configuration (Phase 1)
+  supabase: (() => {
+    const obj = {
+      get url() {
+        return (process.env.SUPABASE_URL || '').trim();
+      },
+      get bucket() {
+        return (process.env.SUPABASE_STORAGE_BUCKET || 'speech-audio').trim();
+      },
+      toJSON() {
+        return {
+          url: this.url,
+          bucket: this.bucket,
+        };
+      },
+    };
+
+    // Keep serviceRoleKey non-enumerable to prevent accidental logging or JSON serialization leaks
+    Object.defineProperty(obj, 'serviceRoleKey', {
+      get() {
+        return (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+      },
+      enumerable: false,
+      configurable: false,
+    });
+
+    return Object.freeze(obj);
+  })(),
+
   // Rate limiting configuration (environment-overridable with secure defaults)
   rateLimit: Object.freeze({
     global: Object.freeze({

@@ -8,6 +8,7 @@ import { createUser } from '../repositories/user.repository.js';
 import { createSpeech, findSpeechById } from '../repositories/speech.repository.js';
 import { hashPassword } from '../utils/password.js';
 import { generateToken, COOKIE_NAME } from '../utils/token.js';
+import { setStorageClientOverride, resetStorageClientOverride } from '../config/storage.js';
 
 describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
   let server;
@@ -20,6 +21,26 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
   const testEmail = `ttstest_${testRunId}@speechengine.test`;
 
   before(async () => {
+    // 0. Set mock storage client for isolated automated tests
+    setStorageClientOverride({
+      storage: {
+        from: (bucket) => ({
+          upload: async (path, buffer, options) => ({
+            data: { path },
+            error: null,
+          }),
+          remove: async (paths) => ({
+            data: paths,
+            error: null,
+          }),
+          getBucket: async (name) => ({
+            data: { id: name, name, public: false },
+            error: null,
+          }),
+        }),
+      },
+    });
+
     // 1. Start server on dynamic port
     await new Promise((resolve) => {
       server = app.listen(0, () => {
@@ -58,6 +79,8 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
     await new Promise((resolve) => {
       server.close(resolve);
     });
+
+    resetStorageClientOverride();
   });
 
   // =========================================================================
@@ -374,12 +397,27 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
         const persisted = checkResult.rows[0];
         assert.strictEqual(persisted.user_id, testUser.id, 'Speech must be owned by authenticated user');
         assert.notStrictEqual(persisted.user_id, spoofedForeignUserId, 'Spoofed user_id must be ignored');
-        assert.strictEqual(persisted.audio_url, null, 'audio_url must be null');
+        assert.strictEqual(
+          persisted.audio_url,
+          `users/${testUser.id}/speeches/${persisted.id}.mp3`,
+          'audio_url must match deterministic storage path users/<userId>/speeches/<speechId>.mp3'
+        );
         assert.strictEqual(persisted.duration, null, 'duration must be null');
         assert.strictEqual(persisted.is_favorite, false, 'is_favorite must default to false');
         assert.strictEqual(persisted.speed, undefined, 'speed column must not exist in row');
         assert.strictEqual(persisted.pitch, undefined, 'pitch column must not exist in row');
         assert.strictEqual(persisted.volume, undefined, 'volume column must not exist in row');
+
+        // Contract: Success returns X-Speech-Id header matching persisted record UUID
+        const speechIdHeader = response.headers.get('x-speech-id');
+        assert.ok(speechIdHeader, 'Response must contain X-Speech-Id header');
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        assert.ok(UUID_REGEX.test(speechIdHeader), `X-Speech-Id must be a valid UUID, got: ${speechIdHeader}`);
+        assert.strictEqual(speechIdHeader, persisted.id, 'X-Speech-Id must match the persisted speech record ID');
+
+        // Verify CORS expose header
+        const exposeHeaders = response.headers.get('access-control-expose-headers') || '';
+        assert.ok(exposeHeaders.toLowerCase().includes('x-speech-id'), 'Access-Control-Expose-Headers must include X-Speech-Id');
       } else {
         // Contract: Provider error returns JSON error envelope
         assert.ok(contentType.includes('application/json'), `Expected application/json, got ${contentType}`);
@@ -450,6 +488,63 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
       const rawJson = JSON.stringify(data);
       assert.strictEqual(rawJson.includes('postgres://'), false);
       assert.strictEqual(rawJson.includes('DATABASE_URL'), false);
+    });
+
+    it('handles storage upload failure: rolls back newly created DB speech and returns HTTP 500 JSON error', async () => {
+      // Configure mock storage client to simulate upload failure
+      setStorageClientOverride({
+        storage: {
+          from: () => ({
+            upload: async () => ({
+              data: null,
+              error: { message: 'Simulated storage bucket outage' },
+            }),
+            remove: async () => ({ data: [], error: null }),
+            getBucket: async () => ({ data: { id: 'speech-audio' }, error: null }),
+          }),
+        },
+      });
+
+      const uniqueFailureText = `Storage failure test text ${Date.now()}`;
+      const response = await fetch(`${baseUrl}/api/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': authCookie,
+        },
+        body: JSON.stringify({
+          text: uniqueFailureText,
+          language: 'en-US',
+          voice: 'sarah',
+        }),
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      assert.ok(contentType.includes('application/json'), `Expected application/json, got ${contentType}`);
+
+      if (response.status === 500) {
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.strictEqual(data.message, 'Failed to store generated audio.');
+
+        // Compensation verification: DB speech row must have been rolled back / deleted
+        const checkResult = await query(
+          'SELECT * FROM speeches WHERE text = $1;',
+          [uniqueFailureText]
+        );
+        assert.strictEqual(checkResult.rows.length, 0, 'Speech row must be deleted upon storage upload failure');
+      }
+
+      // Restore default mock storage client
+      setStorageClientOverride({
+        storage: {
+          from: () => ({
+            upload: async (path) => ({ data: { path }, error: null }),
+            remove: async (paths) => ({ data: paths, error: null }),
+            getBucket: async (name) => ({ data: { id: name, name, public: false }, error: null }),
+          }),
+        },
+      });
     });
   });
 });
