@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import heroImage from '../assets/speechengine-auth-hero.png';
+import heroImage from '../assets/speechengine-auth-hero.jpg';
+import AuthBackgroundDecor from '../components/auth/AuthBackgroundDecor';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -97,9 +98,12 @@ export default function RegisterPage() {
 
       {/* RIGHT 50%: Authentication Area (Single page, no scrolling) */}
       <div className="relative w-full flex-1 lg:h-full flex flex-col justify-center items-center p-3 sm:p-5 lg:p-8 xl:p-10 overflow-hidden">
+        {/* Minimal Abstract Waveform Background */}
+        <AuthBackgroundDecor />
+
         {/* Form Container */}
-        <div className="w-full max-w-[420px] my-auto animate-auth-card">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-card">
+        <div className="w-full max-w-[420px] my-auto animate-auth-card relative z-10">
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-card">
             {/* Branding Header */}
             <div className="mb-3 sm:mb-4 text-left">
               <span className="font-display font-bold text-xs tracking-widest uppercase text-brand-600 dark:text-brand-400">

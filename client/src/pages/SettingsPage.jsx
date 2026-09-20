@@ -280,25 +280,27 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Save Buttons Bar */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              {isSaved ? (
-                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <Check className="w-4 h-4" />
-                  Preferences updated successfully
-                </span>
-              ) : (
-                <span className="text-xs text-slate-400 dark:text-slate-500">Settings will apply to future speech sessions.</span>
-              )}
+            {/* Save Buttons Bar — only for sections requiring saving changes */}
+            {activeSection !== 'appearance' && activeSection !== 'account' && (
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                {isSaved ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <Check className="w-4 h-4" />
+                    Preferences updated successfully
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400 dark:text-slate-500">Settings will apply to future speech sessions.</span>
+                )}
 
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Changes</span>
-              </button>
-            </div>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            )}
           </form>
         </div>
       </div>

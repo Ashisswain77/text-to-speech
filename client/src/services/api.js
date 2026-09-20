@@ -287,32 +287,7 @@ export async function getSpeechAudio(id) {
   return await response.blob();
 }
 
-/**
- * SAFE REST COMMUNICATION DEMONSTRATION HELPERS (Day 6 Only)
- * 
- * Uses standard public test APIs (JSONPlaceholder) to verify:
- * - GET request execution and JSON parsing
- * - POST request execution with Content-Type: application/json
- * - HTTP 4xx/5xx error handling
- * - Network failure handling
- */
-export const restTestApi = {
-  // Demonstration GET request (JSONPlaceholder post #1)
-  demonstrateGet: (id = 1) => 
-    api.get(`https://jsonplaceholder.typicode.com/posts/${id}`),
 
-  // Demonstration POST request with application/json body
-  demonstratePost: (payload) => 
-    api.post('https://jsonplaceholder.typicode.com/posts', payload),
-
-  // Demonstration HTTP 404 error
-  demonstrateHttpError: () => 
-    api.get('https://jsonplaceholder.typicode.com/posts/99999999'),
-
-  // Demonstration Network error (unreachable domain)
-  demonstrateNetworkError: () => 
-    api.get('https://invalid-nonexistent-domain-rest-test-xyz.example/api'),
-};
 
 /**
  * Authentication Service

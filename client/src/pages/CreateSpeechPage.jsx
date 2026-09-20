@@ -7,18 +7,7 @@ import AudioResult from '../components/speech/AudioResult';
 import EmptyAudioState from '../components/speech/EmptyAudioState';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Toast from '../components/common/Toast';
-import StateControllerToolbar from '../components/common/StateControllerToolbar';
 import { ttsService } from '../services/api';
-
-
-// Flag to easily toggle off dev inspector before production
-const ENABLE_DEV_INSPECTOR = true;
-
-const SAMPLE_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. Choose from multi-lingual neural voices with expressive cadence and natural clarity.";
-
-const NEAR_LIMIT_TEXT = "Vocalis converts your written ideas into natural-sounding speech with studio clarity. ".repeat(53) + "Final sentence approaching five thousand characters.";
-
-const OVER_LIMIT_TEXT = "This text intentionally exceeds the maximum limit for demonstration purposes. ".repeat(66);
 
 export default function CreateSpeechPage() {
   // 1. Initial Default State: Strictly Clean & Empty
@@ -158,22 +147,7 @@ export default function CreateSpeechPage() {
     };
   }, []);
 
-  // Dev Inspector Handlers (for Day 2 UI Review only)
-  const handleSetEditorState = (stateName) => {
-    if (stateName === 'empty') {
-      setText('');
-      setErrorType(null);
-    } else if (stateName === 'entered') {
-      setText(SAMPLE_TEXT);
-      setErrorType(null);
-    } else if (stateName === 'near_limit') {
-      setText(NEAR_LIMIT_TEXT);
-      setErrorType(null);
-    } else if (stateName === 'over_limit') {
-      setText(OVER_LIMIT_TEXT);
-      setErrorType('limit_exceeded');
-    }
-  };
+
 
   // Selected Voice & Language metadata
   const effectiveVoices = useMemo(() => voices.length > 0 ? voices : (VOICES[selectedLanguage] || VOICES['en-US']), [voices, selectedLanguage]);
@@ -273,32 +247,7 @@ export default function CreateSpeechPage() {
 
   return (
     <div className="space-y-7 pb-12">
-      {/* 1. Development Only Floating State Inspector */}
-      {ENABLE_DEV_INSPECTOR && (
-        <StateControllerToolbar
-          onSetEditorState={handleSetEditorState}
-          onToggleLoading={() => setIsLoading(!isLoading)}
-          isLoading={isLoading}
-          onSetAudioState={(state) => {
-            setAudioState(state);
-            if (state === 'empty') {
-              revokeAudioUrl();
-              setAudioUrl(null);
-              setIsFavorite(false);
-              setCurrentSpeechId(null);
-            }
-          }}
-          audioState={audioState}
-          onSetErrorType={setErrorType}
-          errorType={errorType}
-          onTriggerToast={() => setShowToast(true)}
-          currentText={text}
-          currentLanguage={selectedLanguage}
-          currentVoice={selectedVoice}
-        />
-      )}
-
-      {/* 2. Hero Section */}
+      {/* 1. Hero Section */}
       <Hero
         onInsertSample={(sample) => {
           setText(sample);

@@ -24,28 +24,25 @@ export default function Sidebar({ isOpen, onClose, onSelectTab }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Main navigation items modeled after the reference image
+  // Main navigation items
   const exploreItems = [
     { 
       id: 'create', 
       path: '/',
       label: 'Create Speech', 
       icon: Sparkles,
-      badge: 'New'
     },
     { 
       id: 'history', 
       path: '/history',
       label: 'Speech History', 
       icon: History, 
-      count: '14'
     },
     { 
       id: 'favorites', 
       path: '/favorites',
       label: 'Starred Favorites', 
       icon: Star, 
-      count: '5'
     },
     { 
       id: 'settings', 
