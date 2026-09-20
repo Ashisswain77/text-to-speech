@@ -1,4 +1,8 @@
-import { findSpeechesByUserId, deleteSpeechByIdAndUserId } from '../repositories/speech.repository.js';
+import {
+  findSpeechesByUserId,
+  deleteSpeechByIdAndUserId,
+  updateSpeechFavoriteByIdAndUserId,
+} from '../repositories/speech.repository.js';
 
 /**
  * History Service
@@ -47,4 +51,32 @@ export async function deleteUserSpeech(speechId, userId) {
   };
 }
 
-export default { getUserHistory, deleteUserSpeech };
+/**
+ * Set the favorite status for a speech record owned by the authenticated user.
+ *
+ * @param {string} speechId - Speech UUID
+ * @param {string} userId - Authoritative authenticated user UUID from req.user.id
+ * @param {boolean} isFavorite - Target boolean favorite status
+ * @returns {Promise<object>} Service result with response data or 404
+ */
+export async function setUserSpeechFavorite(speechId, userId, isFavorite) {
+  const updated = await updateSpeechFavoriteByIdAndUserId(speechId, userId, isFavorite);
+
+  if (!updated) {
+    return {
+      success: false,
+      statusCode: 404,
+      message: 'Speech not found',
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      id: updated.id,
+      isFavorite: updated.isFavorite,
+    },
+  };
+}
+
+export default { getUserHistory, deleteUserSpeech, setUserSpeechFavorite };

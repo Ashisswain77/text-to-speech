@@ -163,10 +163,54 @@ export async function deleteSpeechByIdAndUserId(speechId, userId) {
   return result.rowCount > 0;
 }
 
+/**
+ * Update the is_favorite status of a speech record, scoped to a specific owner.
+ *
+ * The WHERE clause enforces ownership: only the authenticated user's
+ * own record can be updated. If the speech does not exist or belongs
+ * to another user, zero rows are affected.
+ *
+ * @param {string} speechId - Speech UUID to update
+ * @param {string} userId - Authoritative authenticated user UUID
+ * @param {boolean} isFavorite - Target boolean favorite status
+ * @returns {Promise<object|null>} Formatted updated record, or null if not found/not owned
+ */
+export async function updateSpeechFavoriteByIdAndUserId(speechId, userId, isFavorite) {
+  // If speechId is not a valid UUID format, it cannot exist in public.speeches
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!speechId || !UUID_REGEX.test(speechId)) {
+    return null;
+  }
+
+  const sql = `
+    UPDATE speeches
+    SET is_favorite = $1
+    WHERE id = $2
+      AND user_id = $3
+    RETURNING
+      id,
+      user_id,
+      text,
+      language,
+      voice,
+      audio_url,
+      duration,
+      is_favorite,
+      created_at,
+      updated_at;
+  `;
+  const result = await query(sql, [isFavorite, speechId, userId]);
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return formatSpeechRecord(result.rows[0]);
+}
+
 export default {
   formatSpeechRecord,
   createSpeech,
   findSpeechById,
   findSpeechesByUserId,
   deleteSpeechByIdAndUserId,
+  updateSpeechFavoriteByIdAndUserId,
 };

@@ -607,4 +607,272 @@ describe('GET /api/history Integration Tests', () => {
       });
     });
   });
+
+  // =========================================================================
+  // 7. FAVORITES BACKEND API TESTS (POST/DELETE /api/history/:id/favorite)
+  // =========================================================================
+  describe('Favorites API Tests (POST/DELETE /api/history/:id/favorite)', () => {
+    let speechFav;
+    let foreignSpeechFav;
+
+    before(async () => {
+      // User A's speech for favorite tests (initially is_favorite = false)
+      speechFav = await createSpeech({
+        userId: userA.id,
+        text: 'Speech clip for User A favorite testing',
+        language: 'en-US',
+        voice: 'sarah',
+        audioUrl: null,
+        duration: null,
+        isFavorite: false,
+      });
+
+      // User B's speech for isolation testing
+      foreignSpeechFav = await createSpeech({
+        userId: userB.id,
+        text: 'Speech clip for User B private favorite isolation',
+        language: 'en-US',
+        voice: 'sarah',
+        audioUrl: null,
+        duration: null,
+        isFavorite: false,
+      });
+    });
+
+    // A. Unauthenticated favorite: POST without auth -> 401
+    describe('A. Unauthenticated favorite', () => {
+      it('rejects POST /api/history/:id/favorite with 401 when no token is provided', async () => {
+        const response = await fetch(`${baseUrl}/api/history/${speechFav.id}/favorite`, {
+          method: 'POST',
+        });
+
+        assert.strictEqual(response.status, 401);
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.match(data.message, /Authentication required/);
+      });
+    });
+
+    // B. Unauthenticated unfavorite: DELETE without auth -> 401
+    describe('B. Unauthenticated unfavorite', () => {
+      it('rejects DELETE /api/history/:id/favorite with 401 when no token is provided', async () => {
+        const response = await fetch(`${baseUrl}/api/history/${speechFav.id}/favorite`, {
+          method: 'DELETE',
+        });
+
+        assert.strictEqual(response.status, 401);
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.match(data.message, /Authentication required/);
+      });
+    });
+
+    // C. Authenticated user favorites own speech -> 200 -> is_favorite becomes true
+    describe('C. Authenticated user favorites own speech', () => {
+      it('marks speech as favorite returning 200 with isFavorite: true and updates updated_at', async () => {
+        const beforeRecord = await findSpeechById(speechFav.id);
+        assert.strictEqual(beforeRecord.isFavorite, false);
+        const initialUpdatedAt = new Date(beforeRecord.updatedAt).getTime();
+
+        // Brief pause to ensure timestamp advancement if sub-millisecond
+        await new Promise((r) => setTimeout(r, 20));
+
+        const response = await fetch(`${baseUrl}/api/history/${speechFav.id}/favorite`, {
+          method: 'POST',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+
+        assert.strictEqual(response.status, 200);
+        const data = await response.json();
+        assert.strictEqual(data.success, true);
+        assert.strictEqual(data.data.id, speechFav.id);
+        assert.strictEqual(data.data.isFavorite, true);
+
+        // Verify persistence in PostgreSQL
+        const afterRecord = await findSpeechById(speechFav.id);
+        assert.strictEqual(afterRecord.isFavorite, true);
+
+        // Verify automatic updated_at timestamp trigger executed
+        const newUpdatedAt = new Date(afterRecord.updatedAt).getTime();
+        assert.ok(newUpdatedAt >= initialUpdatedAt, 'updated_at must be updated by trigger');
+      });
+    });
+
+    // D. Authenticated user unfavorites own speech -> 200 -> is_favorite becomes false
+    describe('D. Authenticated user unfavorites own speech', () => {
+      it('removes speech from favorites returning 200 with isFavorite: false', async () => {
+        const response = await fetch(`${baseUrl}/api/history/${speechFav.id}/favorite`, {
+          method: 'DELETE',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+
+        assert.strictEqual(response.status, 200);
+        const data = await response.json();
+        assert.strictEqual(data.success, true);
+        assert.strictEqual(data.data.id, speechFav.id);
+        assert.strictEqual(data.data.isFavorite, false);
+
+        // Verify persistence in PostgreSQL
+        const afterRecord = await findSpeechById(speechFav.id);
+        assert.strictEqual(afterRecord.isFavorite, false);
+      });
+    });
+
+    // E. User A cannot favorite User B's speech -> 404 -> User B record remains unchanged
+    describe("E. User A cannot favorite User B's speech", () => {
+      it("returns 404 when User A attempts to favorite User B's speech, leaving record unchanged", async () => {
+        const response = await fetch(`${baseUrl}/api/history/${foreignSpeechFav.id}/favorite`, {
+          method: 'POST',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+
+        assert.strictEqual(response.status, 404);
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.strictEqual(data.message, 'Speech not found');
+
+        // Verify User B's record in PostgreSQL is unchanged
+        const record = await findSpeechById(foreignSpeechFav.id);
+        assert.strictEqual(record.isFavorite, false);
+        assert.strictEqual(record.userId, userB.id);
+      });
+    });
+
+    // F. User A cannot unfavorite User B's speech -> 404 -> User B record remains unchanged
+    describe("F. User A cannot unfavorite User B's speech", () => {
+      it("returns 404 when User A attempts to unfavorite User B's speech, leaving record unchanged", async () => {
+        // First, User B marks their own speech as favorite
+        await fetch(`${baseUrl}/api/history/${foreignSpeechFav.id}/favorite`, {
+          method: 'POST',
+          headers: {
+            Cookie: userBCookie,
+          },
+        });
+        const foreignBefore = await findSpeechById(foreignSpeechFav.id);
+        assert.strictEqual(foreignBefore.isFavorite, true);
+
+        // User A attempts to unfavorite User B's speech
+        const response = await fetch(`${baseUrl}/api/history/${foreignSpeechFav.id}/favorite`, {
+          method: 'DELETE',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+
+        assert.strictEqual(response.status, 404);
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.strictEqual(data.message, 'Speech not found');
+
+        // Verify User B's record remains favorite
+        const foreignAfter = await findSpeechById(foreignSpeechFav.id);
+        assert.strictEqual(foreignAfter.isFavorite, true);
+      });
+    });
+
+    // G. Client-supplied user_id/userId/ownerId cannot bypass ownership
+    describe('G. Client-supplied identity parameters cannot bypass ownership', () => {
+      it('ignores client-supplied user_id, userId, ownerId in body and query params', async () => {
+        // User A tries to favorite User B's speech while spoofing User B's ID
+        const response = await fetch(
+          `${baseUrl}/api/history/${foreignSpeechFav.id}/favorite?userId=${userB.id}&user_id=${userB.id}&ownerId=${userB.id}`,
+          {
+            method: 'POST',
+            headers: {
+              Cookie: userACookie,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userB.id,
+              user_id: userB.id,
+              ownerId: userB.id,
+            }),
+          }
+        );
+
+        assert.strictEqual(response.status, 404);
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.strictEqual(data.message, 'Speech not found');
+      });
+    });
+
+    // H. Nonexistent speech ID -> 404
+    describe('H. Nonexistent speech ID', () => {
+      it('returns 404 for valid nonexistent UUID on POST and DELETE', async () => {
+        const nonExistentUuid = '00000000-0000-0000-0000-000000000000';
+
+        const postRes = await fetch(`${baseUrl}/api/history/${nonExistentUuid}/favorite`, {
+          method: 'POST',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+        assert.strictEqual(postRes.status, 404);
+        const postData = await postRes.json();
+        assert.strictEqual(postData.success, false);
+        assert.strictEqual(postData.message, 'Speech not found');
+
+        const delRes = await fetch(`${baseUrl}/api/history/${nonExistentUuid}/favorite`, {
+          method: 'DELETE',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+        assert.strictEqual(delRes.status, 404);
+        const delData = await delRes.json();
+        assert.strictEqual(delData.success, false);
+        assert.strictEqual(delData.message, 'Speech not found');
+      });
+
+      it('returns 404 for non-UUID string on POST and DELETE without database crash', async () => {
+        const postRes = await fetch(`${baseUrl}/api/history/invalid-uuid-id/favorite`, {
+          method: 'POST',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+        assert.strictEqual(postRes.status, 404);
+        const postData = await postRes.json();
+        assert.strictEqual(postData.success, false);
+        assert.strictEqual(postData.message, 'Speech not found');
+
+        const delRes = await fetch(`${baseUrl}/api/history/invalid-uuid-id/favorite`, {
+          method: 'DELETE',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+        assert.strictEqual(delRes.status, 404);
+        const delData = await delRes.json();
+        assert.strictEqual(delData.success, false);
+        assert.strictEqual(delData.message, 'Speech not found');
+      });
+    });
+
+    // I. Database/error handling does not expose SQL details
+    describe('I. Database error handling does not expose SQL details', () => {
+      it('does not leak SQL details, table names, or connection strings', async () => {
+        const response = await fetch(`${baseUrl}/api/history/' OR 1=1 --/favorite`, {
+          method: 'POST',
+          headers: {
+            Cookie: userACookie,
+          },
+        });
+
+        const data = await response.json();
+        const rawJson = JSON.stringify(data);
+        assert.strictEqual(rawJson.includes('UPDATE speeches'), false, 'Must not leak SQL');
+        assert.strictEqual(rawJson.includes('is_favorite'), false, 'Must not leak column names');
+        assert.strictEqual(rawJson.includes('postgres://'), false, 'Must not leak DB URI');
+        assert.strictEqual(rawJson.includes('DATABASE_URL'), false, 'Must not leak env vars');
+      });
+    });
+  });
 });

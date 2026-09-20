@@ -297,18 +297,35 @@ export default function HistoryPage() {
   };
 
 
-  // Toggle favorite handler (client-side only for now — no backend favorite API)
-  const handleToggleFavorite = (id) => {
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === id ? { ...it, isFavorite: !it.isFavorite } : it
-      )
-    );
+  // Toggle favorite handler (persists to PostgreSQL via POST/DELETE /api/history/:id/favorite)
+  const handleToggleFavorite = async (id) => {
     const item = items.find((it) => it.id === id);
-    if (item) {
+    if (!item) return;
+
+    const willFavorite = !item.isFavorite;
+
+    try {
+      if (willFavorite) {
+        await ttsService.favoriteSpeech(id);
+      } else {
+        await ttsService.unfavoriteSpeech(id);
+      }
+
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === id ? { ...it, isFavorite: willFavorite } : it
+        )
+      );
+
       setToast({
-        message: !item.isFavorite ? 'Saved to Starred Favorites' : 'Removed from Starred Favorites',
+        message: willFavorite ? 'Saved to Starred Favorites' : 'Removed from Starred Favorites',
         type: 'success',
+      });
+    } catch (err) {
+      console.error('[HistoryPage] Failed to toggle favorite:', err);
+      setToast({
+        message: err?.message || 'Failed to update favorite status. Please try again.',
+        type: 'error',
       });
     }
   };

@@ -197,14 +197,14 @@ export const ttsService = {
     return res?.data || res;
   },
 
-  // GET /api/favorites
-  getFavorites: async () => {
-    throw new Error('Endpoint GET /api/favorites is not implemented yet. Scheduled for Day 8 backend creation.');
+  // POST /api/history/:id/favorite
+  favoriteSpeech: async (id) => {
+    return await api.post(`/api/history/${id}/favorite`, {});
   },
 
-  // POST /api/favorites
-  addFavorite: async (_item) => {
-    throw new Error('Endpoint POST /api/favorites is not implemented yet. Scheduled for Day 8 backend creation.');
+  // DELETE /api/history/:id/favorite
+  unfavoriteSpeech: async (id) => {
+    return await api.delete(`/api/history/${id}/favorite`);
   },
 
   // DELETE /api/history/:id
