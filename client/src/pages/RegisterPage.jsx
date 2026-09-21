@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import heroImage from '../assets/speechengine-auth-hero.jpg';
-import AuthBackgroundDecor from '../components/auth/AuthBackgroundDecor';
+import AuthHeroPanel from '../components/auth/AuthHeroPanel';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -85,37 +84,22 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col lg:grid lg:grid-cols-2 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
-      {/* LEFT 50%: Edge-to-Edge Hero Panel with subtle ambient zoom & glow */}
-      <div className="group relative w-full h-[18vh] min-h-[100px] max-h-[160px] lg:max-h-none lg:h-full overflow-hidden bg-slate-100 dark:bg-slate-900 select-none flex-shrink-0">
-        <img
-          src={heroImage}
-          alt="SpeechEngine Multilingual Speech AI"
-          className="w-full h-full object-cover object-center block animate-hero-fade-in transition-transform duration-1000 ease-out group-hover:scale-[1.03] motion-reduce:transform-none"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-      </div>
-
-      {/* RIGHT 50%: Authentication Area (Single page, no scrolling) */}
-      <div className="relative w-full flex-1 lg:h-full flex flex-col justify-center items-center p-3 sm:p-5 lg:p-8 xl:p-10 overflow-hidden">
-        {/* Minimal Abstract Waveform Background */}
-        <AuthBackgroundDecor />
-
-        {/* Form Container */}
-        <div className="w-full max-w-[420px] my-auto animate-auth-card relative z-10">
-          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-card">
-            {/* Branding Header */}
-            <div className="mb-3 sm:mb-4 text-left">
-              <span className="font-display font-bold text-xs tracking-widest uppercase text-brand-600 dark:text-brand-400">
-                SpeechEngine
-              </span>
-              <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
-                Create your account
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Start creating natural speech with SpeechEngine
-              </p>
-            </div>
+    <AuthHeroPanel>
+      {/* Form Container */}
+      <div className="w-full max-w-[420px] my-auto animate-auth-card relative z-10">
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-card">
+          {/* Branding Header */}
+          <div className="mb-3 sm:mb-4 text-left">
+            <span className="font-display font-bold text-xs tracking-widest uppercase text-brand-600 dark:text-brand-400">
+              SpeechEngine
+            </span>
+            <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
+              Create your account
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Start creating natural speech with SpeechEngine
+            </p>
+          </div>
 
             <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3" noValidate>
               {/* Error Alert */}
@@ -298,7 +282,6 @@ export default function RegisterPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </AuthHeroPanel>
   );
 }
