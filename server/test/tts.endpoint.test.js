@@ -9,6 +9,8 @@ import { createSpeech, findSpeechById } from '../repositories/speech.repository.
 import { hashPassword } from '../utils/password.js';
 import { generateToken, COOKIE_NAME } from '../utils/token.js';
 import { setStorageClientOverride, resetStorageClientOverride } from '../config/storage.js';
+import { setTtsProviderOverride, resetTtsProviderOverride } from '../services/tts.service.js';
+import { ElevenLabsProvider } from '../services/providers/elevenlabs.provider.js';
 
 describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
   let server;
@@ -81,6 +83,7 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
     });
 
     resetStorageClientOverride();
+    resetTtsProviderOverride();
   });
 
   // =========================================================================
@@ -545,6 +548,100 @@ describe('POST /api/tts HTTP Integration & Persistence Tests', () => {
           }),
         },
       });
+    });
+
+    it('handles TTS provider timeout: returns HTTP 504 JSON error, does not return audio, and persists no DB/storage data', async () => {
+      const timeoutText = `Simulated provider timeout ${Date.now()}`;
+      setTtsProviderOverride({
+        synthesize: async () => ({
+          success: false,
+          statusCode: 504,
+          message: 'Speech generation timed out. Please try again.',
+        }),
+      });
+
+      try {
+        const response = await fetch(`${baseUrl}/api/tts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg',
+            'Cookie': authCookie,
+          },
+          body: JSON.stringify({
+            text: timeoutText,
+            language: 'en-US',
+            voice: 'sarah',
+          }),
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        assert.ok(contentType.includes('application/json'), `Expected application/json, got ${contentType}`);
+        assert.strictEqual(response.status, 504);
+
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.strictEqual(data.message, 'Speech generation timed out. Please try again.');
+
+        // Verify zero orphaned database rows
+        const checkResult = await query(
+          'SELECT * FROM speeches WHERE text = $1;',
+          [timeoutText]
+        );
+        assert.strictEqual(checkResult.rows.length, 0, 'No DB row must be created when provider times out');
+      } finally {
+        resetTtsProviderOverride();
+      }
+    });
+
+    it('handles real ElevenLabs provider timeout with hanging fetch: returns HTTP 504 JSON error and prevents orphaned records', async () => {
+      const hangingText = `Hanging provider timeout ${Date.now()}`;
+      const mockHangingFetch = () => new Promise((resolve) => setTimeout(resolve, 300));
+      const testProvider = new ElevenLabsProvider();
+
+      // Configure provider override to use ElevenLabsProvider with hanging fetch and fast timeout
+      setTtsProviderOverride({
+        synthesize: async (normalized) => {
+          return await testProvider.synthesize(normalized, {
+            apiKey: 'mock_test_key',
+            fetchFn: mockHangingFetch,
+            timeoutMs: 30,
+          });
+        },
+      });
+
+      try {
+        const response = await fetch(`${baseUrl}/api/tts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg',
+            'Cookie': authCookie,
+          },
+          body: JSON.stringify({
+            text: hangingText,
+            language: 'en-US',
+            voice: 'sarah',
+          }),
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        assert.ok(contentType.includes('application/json'), `Expected application/json, got ${contentType}`);
+        assert.strictEqual(response.status, 504);
+
+        const data = await response.json();
+        assert.strictEqual(data.success, false);
+        assert.strictEqual(data.message, 'Speech generation timed out. Please try again.');
+
+        // Verify zero orphaned database rows
+        const checkResult = await query(
+          'SELECT * FROM speeches WHERE text = $1;',
+          [hangingText]
+        );
+        assert.strictEqual(checkResult.rows.length, 0, 'No DB row must be created when provider times out');
+      } finally {
+        resetTtsProviderOverride();
+      }
     });
   });
 });

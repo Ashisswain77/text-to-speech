@@ -168,6 +168,17 @@ function resolveOptionalString(value, fallback) {
 // Public API
 // ---------------------------------------------------------------------------
 
+// Provider override mechanism for testing (mirrors setStorageClientOverride in storage.js)
+let providerOverride = null;
+
+export function setTtsProviderOverride(override) {
+  providerOverride = override;
+}
+
+export function resetTtsProviderOverride() {
+  providerOverride = null;
+}
+
 /**
  * Process a TTS synthesis request.
  *
@@ -193,9 +204,9 @@ export async function synthesize(payload, options = {}) {
   // 2. Normalize (defaults applied, text trimmed)
   const normalized = normalize(payload);
 
-  // 3. Provider interaction (ElevenLabs adapter)
-  const provider = options.provider || elevenlabsProvider;
-  return await provider.synthesize(normalized);
+  // 3. Provider interaction (ElevenLabs adapter or test override)
+  const provider = options.provider || providerOverride || elevenlabsProvider;
+  return await provider.synthesize(normalized, options);
 }
 
 /**
@@ -206,10 +217,10 @@ export async function synthesize(payload, options = {}) {
  * @returns {Promise<{ success: boolean, statusCode: number, data?: { voices: Array, languages: Array }, message?: string }>}
  */
 export async function getVoices(options = {}) {
-  const provider = options.provider || elevenlabsProvider;
+  const provider = options.provider || providerOverride || elevenlabsProvider;
   return await provider.getVoices(options);
 }
 
 export { validate, normalize };
-export default { synthesize, validate, normalize, getVoices };
+export default { synthesize, validate, normalize, getVoices, setTtsProviderOverride, resetTtsProviderOverride };
 

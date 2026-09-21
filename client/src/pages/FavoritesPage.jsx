@@ -85,14 +85,10 @@ export default function FavoritesPage() {
 
 
 
-  // Download handler: preserve existing behavior for unavailable historical audio
-  const handleDownload = (item) => {
-    const hasAudio = Boolean(
-      (typeof item?.audioUrl === 'string' && item.audioUrl.trim().length > 0) ||
-      (typeof item?.audioData === 'string' && item.audioData.trim().length > 0)
-    );
-
-    if (!hasAudio) {
+  // Download handler — fetches audio through the authenticated backend endpoint
+  // (GET /api/history/:id/audio) to avoid exposing private Supabase Storage paths.
+  const handleDownload = async (item) => {
+    if (!item?.id || typeof item.id !== 'string' || item.id.trim().length === 0) {
       setToast({
         message: 'Download unavailable: No audio recording exists for this clip.',
         type: 'error',
@@ -101,17 +97,45 @@ export default function FavoritesPage() {
     }
 
     try {
-      const filename = `speechengine-${item.id}.mp3`;
-      const a = document.createElement('a');
-      a.href = item.audioUrl || item.audioData;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setToast({ message: `Downloaded ${filename}`, type: 'success' });
+      const audioBlob = await ttsService.getSpeechAudio(item.id);
+
+      if (!audioBlob || audioBlob.size === 0) {
+        setToast({
+          message: 'Download unavailable: Audio data is empty.',
+          type: 'error',
+        });
+        return;
+      }
+
+      const filename = `speech-${item.id}.mp3`;
+      const blobUrl = URL.createObjectURL(audioBlob);
+
+      try {
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setToast({ message: `Downloaded ${filename}`, type: 'success' });
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      }
     } catch (err) {
+      let friendlyMessage = 'Download failed: Unable to retrieve audio.';
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          friendlyMessage = 'Your session has expired. Please log in again.';
+        } else if (err.status === 404) {
+          friendlyMessage = 'Audio not available for this speech clip.';
+        } else if (err.isNetworkError) {
+          friendlyMessage = 'Unable to reach the server. Please check your network connection.';
+        } else {
+          friendlyMessage = err.message || friendlyMessage;
+        }
+      }
       setToast({
-        message: `Download failed: ${err.message || 'Unable to trigger download.'}`,
+        message: friendlyMessage,
         type: 'error',
       });
     }

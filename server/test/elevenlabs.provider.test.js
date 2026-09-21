@@ -188,6 +188,75 @@ describe('ElevenLabs Provider Unit Tests', () => {
       assert.strictEqual(result.statusCode, 503);
       assert.match(result.message, /Failed to reach ElevenLabs API/);
     });
+
+    it('safely handles request timeout when external provider hangs and returns 504 JSON error without partial audio', async () => {
+      // Mock fetch that hangs longer than the configured timeout
+      const mockHangingFetch = () => new Promise((resolve) => setTimeout(resolve, 300));
+
+      const provider = new ElevenLabsProvider();
+      const result = await provider.synthesize(
+        { text: 'Timeout test text', voice: 'sarah' },
+        { apiKey: 'valid_key', fetchFn: mockHangingFetch, timeoutMs: 30 }
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.statusCode, 504);
+      assert.strictEqual(result.message, 'Speech generation timed out. Please try again.');
+      assert.strictEqual(result.audioBuffer, undefined, 'Must not return partial audio on timeout');
+    });
+
+    it('safely triggers and respects AbortSignal when provider request times out', async () => {
+      let receivedSignal = null;
+      let abortedSignalTriggered = false;
+
+      const mockFetchWithSignal = (url, init = {}) => {
+        receivedSignal = init.signal;
+        return new Promise((_, reject) => {
+          if (init.signal) {
+            init.signal.addEventListener('abort', () => {
+              abortedSignalTriggered = true;
+              const err = new Error('The operation was aborted');
+              err.name = 'AbortError';
+              reject(err);
+            });
+          }
+        });
+      };
+
+      const provider = new ElevenLabsProvider();
+      const result = await provider.synthesize(
+        { text: 'AbortSignal timeout test', voice: 'sarah' },
+        { apiKey: 'valid_key', fetchFn: mockFetchWithSignal, timeoutMs: 30 }
+      );
+
+      assert.ok(receivedSignal, 'Must pass AbortSignal to fetchFn');
+      assert.strictEqual(abortedSignalTriggered, true, 'AbortSignal must fire abort event on timeout');
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.statusCode, 504);
+      assert.strictEqual(result.message, 'Speech generation timed out. Please try again.');
+      assert.strictEqual(result.audioBuffer, undefined);
+    });
+
+    it('safely handles timeout during audio binary response parsing without returning partial audio', async () => {
+      // Headers return 200 immediately, but arrayBuffer hangs longer than timeout
+      const mockHangingAudioFetch = async () => ({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        arrayBuffer: () => new Promise((resolve) => setTimeout(resolve, 300)),
+      });
+
+      const provider = new ElevenLabsProvider();
+      const result = await provider.synthesize(
+        { text: 'Audio parsing timeout test', voice: 'sarah' },
+        { apiKey: 'valid_key', fetchFn: mockHangingAudioFetch, timeoutMs: 30 }
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.statusCode, 504);
+      assert.strictEqual(result.message, 'Speech generation timed out. Please try again.');
+      assert.strictEqual(result.audioBuffer, undefined, 'Must not return partial audio if stream hangs');
+    });
   });
 
   describe('Voice Discovery Flow (getVoices)', () => {

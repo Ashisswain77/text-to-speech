@@ -369,6 +369,9 @@ export class ElevenLabsProvider {
     const apiKey = options.apiKey !== undefined ? options.apiKey : config.elevenlabs.apiKey;
     const modelId = options.modelId || config.elevenlabs.modelId || 'eleven_multilingual_v2';
     const fetchFn = options.fetchFn || globalThis.fetch;
+    const timeoutMs = options.timeoutMs !== undefined
+      ? options.timeoutMs
+      : (config.elevenlabs.requestTimeoutMs || 15000);
 
     // 1. Guard against missing or empty API key
     if (!apiKey || apiKey.trim().length === 0) {
@@ -393,19 +396,67 @@ export class ElevenLabsProvider {
       },
     };
 
-    // 4. Execute HTTP request to ElevenLabs API
+    // 4. Setup request timeout mechanism using AbortController and timer
+    const controller = new AbortController();
+    let timedOut = false;
+    let timer;
+
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        const timeoutErr = new Error('Speech generation timed out. Please try again.');
+        timeoutErr.name = 'TimeoutError';
+        reject(timeoutErr);
+      }, timeoutMs);
+      if (typeof timer.unref === 'function') {
+        timer.unref();
+      }
+    });
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        controller.abort(options.signal.reason);
+      } else {
+        options.signal.addEventListener('abort', () => {
+          controller.abort(options.signal.reason);
+        }, { once: true });
+      }
+    }
+
+    // 5. Execute HTTP request to ElevenLabs API with timeout signal
     let response;
     try {
-      response = await fetchFn(endpoint, {
-        method: 'POST',
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      response = await Promise.race([
+        fetchFn(endpoint, {
+          method: 'POST',
+          headers: {
+            'xi-api-key': apiKey,
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg',
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        }),
+        timeoutPromise,
+      ]);
     } catch (err) {
+      clearTimeout(timer);
+      const isTimeout =
+        timedOut ||
+        err.name === 'TimeoutError' ||
+        (err.name === 'AbortError' && (timedOut || !options.signal?.aborted)) ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ESOCKETTIMEDOUT';
+
+      if (isTimeout) {
+        return {
+          success: false,
+          statusCode: 504,
+          message: 'Speech generation timed out. Please try again.',
+        };
+      }
+
       return {
         success: false,
         statusCode: 503,
@@ -413,8 +464,9 @@ export class ElevenLabsProvider {
       };
     }
 
-    // 5. Handle HTTP error responses from provider
+    // 6. Handle HTTP error responses from provider
     if (!response.ok) {
+      clearTimeout(timer);
       let providerErrorDetail = '';
       let isQuotaExceeded = false;
       try {
@@ -488,9 +540,12 @@ export class ElevenLabsProvider {
       };
     }
 
-    // 6. Parse audio data from response
+    // 7. Parse audio data from response (also guarded by timeout)
     try {
-      const arrayBuffer = await response.arrayBuffer();
+      const arrayBuffer = await Promise.race([
+        response.arrayBuffer(),
+        timeoutPromise,
+      ]);
       const audioBuffer = Buffer.from(arrayBuffer);
 
       return {
@@ -508,11 +563,28 @@ export class ElevenLabsProvider {
         audioBuffer,
       };
     } catch (err) {
+      const isTimeout =
+        timedOut ||
+        err.name === 'TimeoutError' ||
+        (err.name === 'AbortError' && (timedOut || !options.signal?.aborted)) ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ESOCKETTIMEDOUT';
+
+      if (isTimeout) {
+        return {
+          success: false,
+          statusCode: 504,
+          message: 'Speech generation timed out. Please try again.',
+        };
+      }
+
       return {
         success: false,
         statusCode: 502,
         message: `Failed to process audio response from ElevenLabs: ${err.message}`,
       };
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

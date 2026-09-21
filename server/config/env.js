@@ -116,6 +116,12 @@ export const config = Object.freeze({
     get modelId() {
       return (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim();
     },
+    get requestTimeoutMs() {
+      return parsePositiveInt(
+        process.env.TTS_PROVIDER_TIMEOUT_MS || process.env.ELEVENLABS_TIMEOUT_MS,
+        15000 // 15 seconds safe development/default timeout
+      );
+    },
   }),
 
   // Reserved for future TTS integration
