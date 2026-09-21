@@ -11,6 +11,9 @@ import { testConnection, pool } from './config/db.js';
 
 const app = express();
 
+// Trust reverse proxy headers (Render, Heroku, AWS ALB) for secure cookies and accurate client IP
+app.set('trust proxy', 1);
+
 // Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
 app.use(helmet());
 
