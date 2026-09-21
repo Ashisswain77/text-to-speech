@@ -5,7 +5,6 @@ import {
   Sun, 
   Moon, 
   Globe2, 
-  Shield, 
   Check,
   Save,
   Volume2
@@ -55,7 +54,6 @@ export default function SettingsPage() {
     { id: 'appearance', label: 'Appearance', icon: Sun },
     { id: 'defaults', label: 'Voice & Language Defaults', icon: Globe2 },
     { id: 'audio', label: 'Audio Preferences', icon: Volume2 },
-    { id: 'account', label: 'Account & Quota', icon: Shield },
   ];
 
   return (
@@ -254,34 +252,8 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Section: Account & Quota */}
-            {activeSection === 'account' && (
-              <div className="space-y-4">
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">Account & Plan Limits</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Current tier usage and API token consumption.</p>
-
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-700 dark:text-slate-200 font-semibold">Active Plan</span>
-                    <span className="text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded border border-brand-200 dark:border-brand-800 font-bold capitalize">
-                      {user?.tier ? `${user.tier} Tier` : 'Free Tier'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-                    <span>Session Request Limit</span>
-                    <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
-                      {user?.charLimit ? `${user.charLimit.toLocaleString()} characters / request` : '5,000 characters / request'}
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-600 rounded-full w-[25%]" />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Save Buttons Bar — only for sections requiring saving changes */}
-            {activeSection !== 'appearance' && activeSection !== 'account' && (
+            {activeSection !== 'appearance' && (
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 {isSaved ? (
                   <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">

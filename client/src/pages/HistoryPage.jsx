@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, History, AlertTriangle, RefreshCw } from 'lucide-react';
+import { History, AlertTriangle, RefreshCw } from 'lucide-react';
 import HistoryItem from '../components/history/HistoryItem';
 import { HistoryItemSkeleton } from '../components/common/Skeleton';
 import Toast from '../components/common/Toast';
@@ -7,10 +7,6 @@ import { ttsService, ApiError } from '../services/api';
 import { useHistoryAudio } from '../hooks/useHistoryAudio';
 
 export default function HistoryPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLang, setSelectedLang] = useState('all');
-  const [selectedVoice, setSelectedVoice] = useState('all');
-  const [selectedSort, setSelectedSort] = useState('latest');
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -207,33 +203,6 @@ export default function HistoryPage() {
     }
   };
 
-  // Filter & Search logic
-  const filteredItems = items
-    .filter((it) => {
-      const matchesSearch =
-        it.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (it.title && it.title.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesLang =
-        selectedLang === 'all' ||
-        it.language.toLowerCase().includes(selectedLang.toLowerCase());
-      const matchesVoice =
-        selectedVoice === 'all' ||
-        it.voice.toLowerCase().includes(selectedVoice.toLowerCase());
-      return matchesSearch && matchesLang && matchesVoice;
-    })
-    .sort((a, b) => {
-      if (selectedSort === 'oldest') {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateA - dateB;
-      }
-      if (selectedSort === 'duration') {
-        return (b.duration || 0) - (a.duration || 0);
-      }
-      // 'latest' default — API already returns newest first
-      return 0;
-    });
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -246,57 +215,6 @@ export default function HistoryPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Browse and manage all previously synthesized voice clips.
           </p>
-        </div>
-      </div>
-
-      {/* Search & Filter Controls */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-card flex flex-col md:flex-row items-center gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search history by script keywords..."
-            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-          />
-        </div>
-
-        {/* Filter: Language */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <select
-            value={selectedLang}
-            onChange={(e) => setSelectedLang(e.target.value)}
-            className="flex-1 md:w-40 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-          >
-            <option value="all">All Languages</option>
-            <option value="english">English</option>
-            <option value="hindi">Hindi</option>
-            <option value="french">French</option>
-          </select>
-
-          {/* Filter: Voice */}
-          <select
-            value={selectedVoice}
-            onChange={(e) => setSelectedVoice(e.target.value)}
-            className="flex-1 md:w-36 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-          >
-            <option value="all">All Voices</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-          </select>
-
-          {/* Filter: Date */}
-          <select
-            value={selectedSort}
-            onChange={(e) => setSelectedSort(e.target.value)}
-            className="hidden sm:block md:w-36 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-          >
-            <option value="latest">Latest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="duration">Longest Duration</option>
-          </select>
         </div>
       </div>
 
@@ -326,8 +244,8 @@ export default function HistoryPage() {
               Retry
             </button>
           </div>
-        ) : filteredItems.length > 0 ? (
-          filteredItems.map((item) => (
+        ) : items.length > 0 ? (
+          items.map((item) => (
             <HistoryItem
               key={item.id}
               item={item}
@@ -343,12 +261,10 @@ export default function HistoryPage() {
           <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
             <History className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {items.length === 0 ? 'No speech history yet' : 'No matching audio records'}
+              No speech history yet
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {items.length === 0
-                ? 'Synthesize your first voiceover from the Create Speech studio.'
-                : 'Try adjusting your search query or clear the active filters.'}
+              Synthesize your first voiceover from the Create Speech studio.
             </p>
           </div>
         )}

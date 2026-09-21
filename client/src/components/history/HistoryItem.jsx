@@ -151,28 +151,28 @@ export default function HistoryItem({
           </button>
 
           {/* Download */}
-          <button
-            type="button"
-            onClick={() => {
-              if (onDownload) onDownload(item);
-            }}
-            aria-label="Download audio file"
-            className="w-9 h-9 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            <Download className="w-4 h-4" />
-          </button>
+          {Boolean(onDownload) && (
+            <button
+              type="button"
+              onClick={() => onDownload(item)}
+              aria-label="Download audio file"
+              className="w-9 h-9 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Delete */}
-          <button
-            type="button"
-            onClick={() => {
-              if (onDelete) onDelete(item);
-            }}
-            aria-label="Delete history item"
-            className="w-9 h-9 rounded-xl text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {Boolean(onDelete) && (
+            <button
+              type="button"
+              onClick={() => onDelete(item)}
+              aria-label="Delete history item"
+              className="w-9 h-9 rounded-xl text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

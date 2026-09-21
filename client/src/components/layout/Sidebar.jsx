@@ -9,10 +9,8 @@ import {
   ChevronRight,
   HelpCircle
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 
 export default function Sidebar({ isOpen, onClose, onSelectTab }) {
-  const { user } = useAuth();
   // Close drawer on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -160,31 +158,11 @@ export default function Sidebar({ isOpen, onClose, onSelectTab }) {
           </div>
         </div>
 
-        {/* Lower section / Studio Info Card */}
-        <div className="p-5 border-t border-slate-100 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-950/40">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-transparent dark:border-slate-800 text-white shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-300">
-                Session Limit
-              </span>
-              <span className="font-mono text-[10px] font-medium bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full border border-brand-500/30 capitalize">
-                {user?.tier ? `${user.tier} Tier` : 'Free Tier'}
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between text-xs text-slate-200 mb-1.5">
-              <span>Characters / request</span>
-              <span className="font-mono font-semibold text-white">
-                {user?.charLimit ? `${user.charLimit.toLocaleString()}` : '5,000'}
-              </span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-brand-500 rounded-full w-[25%]" />
-            </div>
-          </div>
-
+        {/* Lower section / Studio Footer */}
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
           <div className="flex items-center justify-between px-2 text-xs text-slate-400 dark:text-slate-500">
-            <span>SpeechEngine Studio</span>
-            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer">
+            <span className="font-medium">SpeechEngine Studio</span>
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer transition-colors">
               <HelpCircle className="w-3.5 h-3.5" />
               <span>Docs</span>
             </div>

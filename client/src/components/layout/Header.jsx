@@ -66,26 +66,29 @@ export default function Header({ onToggleSidebar, isSidebarOpen, onSelectTab }) 
             aria-expanded={showProfileMenu}
             aria-label="Toggle user account menu"
             className={`
-              flex items-center gap-2.5 p-1 pl-1.5 pr-2.5 rounded-full transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500
+              group flex items-center gap-2.5 py-1 px-1.5 pr-3 rounded-full transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-500/40
               ${showProfileMenu 
-                ? 'bg-slate-100 dark:bg-slate-800 border border-brand-400/80 dark:border-brand-500/80 ring-2 ring-brand-500/20 shadow-sm' 
-                : 'border border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
+                ? 'bg-brand-50/80 dark:bg-slate-800/90 border border-brand-500/60 ring-2 ring-brand-500/20 shadow-sm shadow-brand-500/10' 
+                : 'bg-white/80 dark:bg-slate-850/80 backdrop-blur-sm border border-slate-200/90 dark:border-slate-750/90 hover:bg-slate-50/90 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs'
               }
             `}
           >
-            <div className="relative">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white font-semibold text-xs flex items-center justify-center shadow-xs">
+            <div className="relative flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 via-brand-600 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-1 ring-white/40 dark:ring-white/10">
                 {initials}
               </div>
-              {/* Online indicator dot */}
-              <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+              {/* Pulsing online indicator dot */}
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+              </span>
             </div>
 
-            <span className="hidden sm:inline-block text-xs font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+            <span className="hidden sm:inline-block text-xs font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[130px] tracking-tight group-hover:text-brand-600 dark:group-hover:text-brand-300 transition-colors">
               {displayName}
             </span>
 
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${showProfileMenu ? 'rotate-180 text-brand-600 dark:text-brand-400' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-400 transition-transform duration-200 group-hover:text-slate-600 dark:group-hover:text-slate-200 ${showProfileMenu ? 'rotate-180 text-brand-600 dark:text-brand-400' : ''}`} />
           </button>
 
           {/* Animated Profile Menu Dropdown */}

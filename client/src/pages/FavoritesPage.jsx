@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Star, Search, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Star, AlertTriangle, RefreshCw } from 'lucide-react';
 import HistoryItem from '../components/history/HistoryItem';
 import { HistoryItemSkeleton } from '../components/common/Skeleton';
 import Toast from '../components/common/Toast';
@@ -7,17 +7,9 @@ import { ttsService, ApiError } from '../services/api';
 import { useHistoryAudio } from '../hooks/useHistoryAudio';
 
 export default function FavoritesPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLang, setSelectedLang] = useState('all');
-  const [selectedVoice, setSelectedVoice] = useState('all');
-  const [selectedSort, setSelectedSort] = useState('latest');
   const [favorites, setFavorites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
-
-  // Delete confirmation & Toast state
-  const [itemToDelete, setItemToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
 
   // Audio Playback Hook (guarantees single active audio & object URL lifecycle)
@@ -64,17 +56,6 @@ export default function FavoritesPage() {
     fetchFavorites();
   }, [fetchFavorites]);
 
-  // Close delete modal on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && itemToDelete && !isDeleting) {
-        setItemToDelete(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [itemToDelete, isDeleting]);
-
   // Auto-dismiss notification toast
   useEffect(() => {
     if (toast) {
@@ -82,64 +63,6 @@ export default function FavoritesPage() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
-
-
-
-  // Download handler — fetches audio through the authenticated backend endpoint
-  // (GET /api/history/:id/audio) to avoid exposing private Supabase Storage paths.
-  const handleDownload = async (item) => {
-    if (!item?.id || typeof item.id !== 'string' || item.id.trim().length === 0) {
-      setToast({
-        message: 'Download unavailable: No audio recording exists for this clip.',
-        type: 'error',
-      });
-      return;
-    }
-
-    try {
-      const audioBlob = await ttsService.getSpeechAudio(item.id);
-
-      if (!audioBlob || audioBlob.size === 0) {
-        setToast({
-          message: 'Download unavailable: Audio data is empty.',
-          type: 'error',
-        });
-        return;
-      }
-
-      const filename = `speech-${item.id}.mp3`;
-      const blobUrl = URL.createObjectURL(audioBlob);
-
-      try {
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setToast({ message: `Downloaded ${filename}`, type: 'success' });
-      } finally {
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-      }
-    } catch (err) {
-      let friendlyMessage = 'Download failed: Unable to retrieve audio.';
-      if (err instanceof ApiError) {
-        if (err.status === 401) {
-          friendlyMessage = 'Your session has expired. Please log in again.';
-        } else if (err.status === 404) {
-          friendlyMessage = 'Audio not available for this speech clip.';
-        } else if (err.isNetworkError) {
-          friendlyMessage = 'Unable to reach the server. Please check your network connection.';
-        } else {
-          friendlyMessage = err.message || friendlyMessage;
-        }
-      }
-      setToast({
-        message: friendlyMessage,
-        type: 'error',
-      });
-    }
-  };
 
   // Toggle favorite handler: on the Favorites page, toggling an item removes it from favorites
   const handleToggleFavorite = async (id) => {
@@ -168,67 +91,6 @@ export default function FavoritesPage() {
     }
   };
 
-  // Confirm delete handler (persists deletion to PostgreSQL via DELETE /api/history/:id)
-  const confirmDelete = async () => {
-    if (!itemToDelete || isDeleting) return;
-
-    const targetId = itemToDelete.id;
-    setIsDeleting(true);
-
-    try {
-      await ttsService.deleteHistoryItem(targetId);
-
-      // Stop audio if deleting the currently active item
-      if (playingItemId === targetId || loadingAudioItemId === targetId) {
-        stopAudio();
-      }
-
-      // Remove from displayed list upon successful deletion
-      setFavorites((prev) => prev.filter((it) => it.id !== targetId));
-      setItemToDelete(null);
-      setToast({
-        message: 'Speech deleted successfully',
-        type: 'success',
-      });
-    } catch (err) {
-      console.error('[FavoritesPage] Failed to delete speech:', err);
-      setItemToDelete(null);
-      setToast({
-        message: err?.message || 'Failed to delete speech clip. Please try again.',
-        type: 'error',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Filter & Search logic
-  const filteredFavorites = favorites
-    .filter((it) => {
-      const matchesSearch =
-        it.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (it.title && it.title.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesLang =
-        selectedLang === 'all' ||
-        it.language.toLowerCase().includes(selectedLang.toLowerCase());
-      const matchesVoice =
-        selectedVoice === 'all' ||
-        it.voice.toLowerCase().includes(selectedVoice.toLowerCase());
-      return matchesSearch && matchesLang && matchesVoice;
-    })
-    .sort((a, b) => {
-      if (selectedSort === 'oldest') {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateA - dateB;
-      }
-      if (selectedSort === 'duration') {
-        return (b.duration || 0) - (a.duration || 0);
-      }
-      // 'latest' default — API already returns newest first
-      return 0;
-    });
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -246,57 +108,6 @@ export default function FavoritesPage() {
         <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-800/60">
           {favorites.length} Saved {favorites.length === 1 ? 'Item' : 'Items'}
         </span>
-      </div>
-
-      {/* Search & Filter Controls */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-card flex flex-col md:flex-row items-center gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search favorites by script keywords..."
-            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-          />
-        </div>
-
-        {/* Filter: Language */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <select
-            value={selectedLang}
-            onChange={(e) => setSelectedLang(e.target.value)}
-            className="flex-1 md:w-40 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-          >
-            <option value="all">All Languages</option>
-            <option value="english">English</option>
-            <option value="hindi">Hindi</option>
-            <option value="french">French</option>
-          </select>
-
-          {/* Filter: Voice */}
-          <select
-            value={selectedVoice}
-            onChange={(e) => setSelectedVoice(e.target.value)}
-            className="flex-1 md:w-36 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-          >
-            <option value="all">All Voices</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-          </select>
-
-          {/* Filter: Date */}
-          <select
-            value={selectedSort}
-            onChange={(e) => setSelectedSort(e.target.value)}
-            className="hidden sm:block md:w-36 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-          >
-            <option value="latest">Latest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="duration">Longest Duration</option>
-          </select>
-        </div>
       </div>
 
       {/* Favorites List, Skeletons, Error, or Empty State */}
@@ -325,16 +136,14 @@ export default function FavoritesPage() {
               Retry
             </button>
           </div>
-        ) : filteredFavorites.length > 0 ? (
-          filteredFavorites.map((item) => (
+        ) : favorites.length > 0 ? (
+          favorites.map((item) => (
             <HistoryItem
               key={item.id}
               item={item}
               isPlaying={playingItemId === item.id}
               isLoadingAudio={loadingAudioItemId === item.id}
               onPlay={() => handlePlay(item)}
-              onDownload={() => handleDownload(item)}
-              onDelete={() => setItemToDelete(item)}
               onToggleFavorite={() => handleToggleFavorite(item.id)}
             />
           ))
@@ -342,72 +151,14 @@ export default function FavoritesPage() {
           <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
             <Star className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {favorites.length === 0
-                ? 'No favorite audio clips saved'
-                : 'No matching favorite audio records'}
+              No favorite audio clips saved
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-              {favorites.length === 0
-                ? 'Star audio clips from the Create Speech studio or History to access them quickly here.'
-                : 'Try adjusting your search query or clear the active filters.'}
+              Star audio clips from the Create Speech studio or History to access them quickly here.
             </p>
           </div>
         )}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {itemToDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => !isDeleting && setItemToDelete(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-dialog-title"
-        >
-          <div
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3.5 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0 border border-rose-100 dark:border-rose-900/40">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 id="delete-dialog-title" className="text-base font-bold text-slate-900 dark:text-white">
-                  Delete Speech Clip?
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  This speech clip will be permanently deleted from your history and favorites.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 mb-5">
-              "{itemToDelete.text}"
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => !isDeleting && setItemToDelete(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={confirmDelete}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 inline-flex items-center gap-1.5"
-              >
-                {isDeleting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                {isDeleting ? 'Deleting...' : 'Delete Clip'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Status & Notification Toast */}
       {toast && (

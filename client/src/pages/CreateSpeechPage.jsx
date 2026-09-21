@@ -41,15 +41,36 @@ export default function CreateSpeechPage() {
     }
   }, [showToast]);
 
-  // Track the current blob URL so we can revoke it on new generation or unmount
+  // Track the current blob URL and component mount status for lifecycle management
   const audioUrlRef = useRef(null);
+  const isMountedRef = useRef(true);
 
-  // Revoke old blob URL when replacing with newly generated audio
+  // Safely revoke active blob URL and clear ref
   const revokeAudioUrl = useCallback(() => {
     if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
+      try {
+        URL.revokeObjectURL(audioUrlRef.current);
+      } catch (err) {
+        console.warn('[CreateSpeechPage] Error revoking audio object URL:', err);
+      }
       audioUrlRef.current = null;
     }
+  }, []);
+
+  // Component unmount cleanup: ensures active blob URL is always revoked when navigating away
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (audioUrlRef.current) {
+        try {
+          URL.revokeObjectURL(audioUrlRef.current);
+        } catch (err) {
+          console.warn('[CreateSpeechPage] Error revoking audio object URL on unmount:', err);
+        }
+        audioUrlRef.current = null;
+      }
+    };
   }, []);
 
 
@@ -183,16 +204,20 @@ export default function CreateSpeechPage() {
     setIsLoading(true);
     setAudioState('loading');
 
-    // Revoke previous blob URL
-    revokeAudioUrl();
-    setAudioUrl(null);
-
     try {
       const { audioBlob, speechId } = await ttsService.generateSpeechAudio({
         text: text.trim(),
         language: selectedLanguage,
         voice: selectedVoice,
       });
+
+      // Guard: do not allocate object URL or update state if unmounted while request was in-flight
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      // Revoke the previous object URL right before replacing with the newly generated audio URL
+      revokeAudioUrl();
 
       // Create object URL for the audio blob
       const url = URL.createObjectURL(audioBlob);
@@ -204,10 +229,16 @@ export default function CreateSpeechPage() {
       setToastType('success');
       setShowToast(true);
     } catch (err) {
+      if (!isMountedRef.current) return;
+      // Revoke any previous audio URL and reset audio state on generation error
+      revokeAudioUrl();
+      setAudioUrl(null);
       setGenerationError(err.message || 'Speech generation failed. Please try again.');
       setAudioState('empty');
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [text, selectedLanguage, selectedVoice, revokeAudioUrl]);
 
